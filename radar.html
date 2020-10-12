@@ -23,10 +23,36 @@
 				cursor: default;
 			}
 			
-			div #my_dataviz{
-			  max-width: 500px;
-			  height: 100px;
-			  background-color: powderblue;
+			
+			#svg{
+			  position: fixed;
+			  top: 4.5vw;
+			  right: 2.2vw;
+			}
+			#svg2{
+			  position: fixed;
+			  top: 3vw;
+			  left: 0;
+			}
+			
+			#dropDown{
+			  position: fixed;
+			  top: 2vw;
+			  width: 10%;
+			  left: 72%;
+			}
+			
+			#dropDown3{
+			  position: fixed;
+			  top: 2vw;
+			  width: 7%;
+			  left: 20%;
+			}
+			#dropDown2{
+			  position: fixed;
+			  top: 2vw;
+			  width: 7%;
+			  left: 28%;
 			}
 			
 			.legend {
@@ -41,15 +67,21 @@
 	
 	</head>
 	<body>
-		<select name="dropDown" onclick="button(document.getElementById('dropDown').value)" id="dropDown">
-		</select>
+		<div class="dropDowns">
+			<select name="dropDown3" onclick="changeAxis(document.getElementById('dropDown2').value, document.getElementById('dropDown3').value)" id="dropDown3">
+			</select>
+			<select name="dropDown2" onclick="changeAxis(document.getElementById('dropDown2').value, document.getElementById('dropDown3').value)" id="dropDown2">
+			</select>
+			<select name="dropDown" onclick="radarSelector(document.getElementById('dropDown').value)" id="dropDown">
+			</select>
+		</div>
 		<div class="radarChart"></div>
-		<div id="my_dataviz"></div>
+		<div id="scatterPlot"></div>
 
 		
 	<script>
 	////////////////////////////////////////////////////////////// 
-	//////////////////////// Set-Up ////////////////////////////// 
+	///////////////////// Radar Set-Up ///////////////////////////
 	////////////////////////////////////////////////////////////// 
 	
 	var theData = [];
@@ -57,8 +89,8 @@
 	var player = 5;
 	var names = [];
 	
-	var margin = {top: 100, right: 100, bottom: 100, left: 100},
-				width = Math.min(700, window.innerWidth - 10) - margin.left - margin.right,
+	var margin = {top: 60, right: 100, bottom: 100, left: 100},
+				width = Math.min(640, window.innerWidth - 10) - margin.left - margin.right,
 				height = Math.min(width, window.innerHeight - margin.top - margin.bottom - 20);
 	
 	var color = d3.scaleOrdinal(d3.schemeCategory10);
@@ -94,11 +126,16 @@
 		]
 	];
 	
-	// set the dimensions and margins of the graph
-	var scatterMargin = {top: 10, right: 30, bottom: 30, left: 60},
-		scatterWidth = 460 - scatterMargin.left - scatterMargin.right,
-		scatterHeight = 450 - scatterMargin.top - scatterMargin.bottom;
+	////////////////////////////////////////////////////////////// 
+	///////////////////// Scatterplot Setup //////////////////////
+	////////////////////////////////////////////////////////////// 
 	
+	// set the dimensions and margins of the graph
+	var scatterMargin = {top: 30, right: 70, bottom: 50, left: 80},
+		scatterWidth = 850 - scatterMargin.left - scatterMargin.right,
+		scatterHeight = 600 - scatterMargin.top - scatterMargin.bottom;
+	
+
 	////////////////////////////////////////////////////////////// 
 	////////////////////////// Data ////////////////////////////// 
 	////////////////////////////////////////////////////////////// 
@@ -173,14 +210,29 @@
 		
 		console.log(theData);
 		
-		//create the dropdown
+		//create the Radar dropdown
 		var dropDown = document.getElementById("dropDown");
-	
 		for (var i = 0; i < theData.length; i++) {
 			var option = document.createElement("option");
 			option.text = theData[i].Player;
 			dropDown.add(option);
 		}
+
+		//create the 1st Scatterplot dropdown
+		var dropDown2 = document.getElementById("dropDown2");
+		for (var i = 0; i < data[0].length; i++) {
+			var option = document.createElement("option");
+			option.text = data[0][i].axis;
+			dropDown2.add(option);
+		}
+		//create the 2nd Scatterplot dropdown
+		var dropDown3 = document.getElementById("dropDown3");
+		for (var i = 0; i < data[0].length; i++) {
+			var option = document.createElement("option");
+			option.text = data[0][i].axis;
+			dropDown3.add(option);
+		}
+		
 		//Create a list of names to get the index for the selection
 		for (var i = 0; i < theData.length; i++) {
 			name = theData[i].Player;
@@ -188,15 +240,15 @@
 		}
 
 		//Call function to draw the Radar chart with the first player
-		button(theData[0].Player);
+		radarSelector(theData[0].Player);
 		
 		//Call function to draw the scatterplot
-		scatterPlot();
+		scatterPlot(data[0][1].axis, data[0][2].axis); //SOT and S
 		
 		});//CSV tempData2
 	});//CSV tempData
 	
-	function button(selection) {
+	function radarSelector(selection) {
 
 		player = names.indexOf(selection);
 		
@@ -272,8 +324,10 @@
 			
 			//Initiate the radar chart SVG
 			var svg = d3.select(id).append("svg")
+					.attr("id", "svg")
 					.attr("width",  cfg.w + cfg.margin.left + cfg.margin.right)
 					.attr("height", cfg.h + cfg.margin.top + cfg.margin.bottom)
+					//.style("position", "absolute")
 					.attr("class", "radar"+id);
 			//Append a g element		
 			var g = svg.append("g")
@@ -491,11 +545,16 @@
 			
 	}//RadarChart
 	
-	function scatterPlot() {
-
+	function scatterPlot(xAxis, yAxis) {
+		
+		//Remove whatever chart with the same id/class was present before
+		d3.select("#scatterPlot").select("svg").remove();
+		
+		
 		// append the svg object to the body of the page
-		var svg2 = d3.select("#my_dataviz")
+		var svg2 = d3.select("#scatterPlot")
 		  .append("svg")
+			.attr("id", "svg2")
 			.attr("width", scatterWidth + scatterMargin.left + scatterMargin.right)
 			.attr("height", scatterHeight + scatterMargin.top + scatterMargin.bottom)
 		  .append("g")
@@ -517,28 +576,53 @@
 			.range([ scatterHeight, 0]);
 		svg2.append("g")
 			.call(d3.axisLeft(y));
-
-		// Add dots
-		var dots = svg2.append('g')
-			.selectAll("dot")
-			.data(theData) // Was .data(data.filter(function(d,i){return i<50}) the .filter part is just to keep a few dots on the chart, not all of them
-			.enter()
-			.append("circle")
-				.attr("cx", function (d) { return x(d.SFTPp90); } )
-				.attr("cy", function (d) { return y(d.KPp90); } )
-				.attr("r", 7)
-				.style("fill", "#69b3a2")
-				.style("opacity", 0.3)
-				.style("stroke", "white")
 		
-		const tip = d3.tip().attr('class', 'd3-tip').html(function(event,d) { return JSON.stringify(d.Player); });
-			svg2.call(tip);
-			dots
-				.on('mouseenter.tip',tip.show)
-				.on('mouseleave.tip',tip.hide)
-				//.on("click", )
+		// text label for the x axis
+		svg2.append("text")             
+			.attr("transform",
+			"translate(" + (scatterWidth/2) + " ," + 
+								 (scatterHeight + scatterMargin.top + 10) + ")")
+			.style("text-anchor", "middle")
+			.style("font-size", "20px")
+			.text(xAxis);
+		
+		// text label for the y axis
+		svg2.append("text")
+			.attr("transform", "rotate(-90)")
+			.attr("y", 22 - scatterMargin.left)
+			.attr("x",0 - (scatterHeight / 2))
+			.attr("dy", "1em")
+			.style("text-anchor", "middle")
+			.style("font-size", "20px")
+			.text(yAxis);
+		
+		// Add dots
+		var node = svg2.selectAll(".node")
+			.data(theData)
+			.enter()
+			.append('g')
+			.attr("class", "node")
+		
+		node.append("circle")
+					.attr("cx", function (d) { return x(eval("d." + xAxis)); } )
+					.attr("cy", function (d) { return y(eval("d." + yAxis)); } )
+					.attr("r", 7)
+					.style("fill", "#69b3a2")
+					.style("opacity", 0.3)
+					.style("stroke", "white")
+		
 	
-	}	
-		</script>
+		node.append("text")
+			.attr("dx", function (d) { return x(eval("d." + xAxis)); } )
+			.attr("dy", function (d) { return y(eval("d." + yAxis)); } )
+			.text(function(d) { return d.Player });
+
+		
+	}//Scatterplot
+	
+	function changeAxis(xAxis, yAxis){
+		scatterPlot(xAxis, yAxis);
+	}
+	</script>
 	</body>
 </html>
