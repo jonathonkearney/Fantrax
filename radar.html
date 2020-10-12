@@ -131,8 +131,8 @@
 	////////////////////////////////////////////////////////////// 
 	
 	// set the dimensions and margins of the graph
-	var scatterMargin = {top: 30, right: 70, bottom: 50, left: 80},
-		scatterWidth = 850 - scatterMargin.left - scatterMargin.right,
+	var scatterMargin = {top: 60, right: 90, bottom: 50, left: 80},
+		scatterWidth = 900 - scatterMargin.left - scatterMargin.right,
 		scatterHeight = 600 - scatterMargin.top - scatterMargin.bottom;
 	
 
@@ -148,12 +148,13 @@
 		
 		//Create the array that will hold the players p90 scores
 		for (var i = 0; i < tempData.length; i++) {
-			
+
 			var o = {};
 			o.Player = tempData[i].Player;
 			o.Minutes = tempData2[i].Min;
 			o.Status = tempData[i].Status;
-			if(o.Minutes > 90){ //to remove some extreme cases and to avoid div/0
+			o.FPtsp90 = tempData[i].FPts;
+			if(o.Minutes > 90 && o.FPtsp90 > 0 ){ //to remove some extreme cases and to avoid div/0
 				o.FPtsp90 = (tempData[i].FPts / o.Minutes) *90;
 				o.Sp90 = (tempData2[i].S / o.Minutes) *90;
 				o.SOTp90 = (tempData[i].SOT / o.Minutes) *90;
@@ -171,6 +172,7 @@
 				theData.push(o);
 			}
 		}
+		
 		
 		//Find the highest scores in each category
 		var mostFPtsp90 = Math.max.apply(Math,theData.map(function(o){return (o.FPtsp90);}));
@@ -597,7 +599,7 @@
 			.text(yAxis);
 		
 		// Add nodes
-		var node = svg2.selectAll("g")
+		var node = svg2.selectAll(".node")
 			.data(theData)
 			.enter()
 			.append('g')
@@ -613,6 +615,7 @@
 					.attr("cy", function (d) { return y(eval("d." + yAxis)); } )
 					.attr("r", 7)
 					.style("fill", function (d){
+						if(d.Player == "Jamie Vardy"){console.log("Jamie was drawn")}
 						var status = d.Status;
 						if(d.Status == "FA"){return "green";}
 						else if (status.charAt(1) == "("){return "orange";} //all waivers have ( as second character
