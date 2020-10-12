@@ -152,6 +152,7 @@
 			var o = {};
 			o.Player = tempData[i].Player;
 			o.Minutes = tempData2[i].Min;
+			o.Status = tempData[i].Status;
 			if(o.Minutes > 90){ //to remove some extreme cases and to avoid div/0
 				o.FPtsp90 = (tempData[i].FPts / o.Minutes) *90;
 				o.Sp90 = (tempData2[i].S / o.Minutes) *90;
@@ -167,7 +168,6 @@
 				o.AERp90 = (tempData[i].AER / o.Minutes) *90;
 				o.CSDp90 = (tempData[i].CSD / o.Minutes) *90;
 				o.CoSp90 = (tempData[i].CoS / o.Minutes) *90;
-				//o.DISp90 = (tempData[i].DIS / o.Minutes) *90; // This will need a change
 				theData.push(o);
 			}
 		}
@@ -612,8 +612,14 @@
 					.attr("cx", function (d) { return x(eval("d." + xAxis)); } )
 					.attr("cy", function (d) { return y(eval("d." + yAxis)); } )
 					.attr("r", 7)
-					.style("fill", "#69b3a2")
-					.style("opacity", 0.3)
+					.style("fill", function (d){
+						var status = d.Status;
+						if(d.Status == "FA"){return "green";}
+						else if (status.charAt(1) == "("){return "orange";} //all waivers have ( as second character
+						else{return "red";}
+					
+					})
+					.style("opacity", 0.4)
 					.style("stroke", "white")
 
 		
