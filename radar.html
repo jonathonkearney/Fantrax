@@ -28,11 +28,11 @@
 			}
 			
 			.title{
-				font-size: 4vw;
+				font-size: 3.8vw;
 				color: black;
 				font-family: 'Open Sans', sans-serif;
 				margin-top: 0;
-				height: 3.5vw;
+				height: 3vw;
 			}
 			
 			.instructions{
@@ -43,76 +43,79 @@
 				height: 1vw;
 				left: 22vw;
 				text-align: left;
+				width: 50%;
 			}
 			
 			#svg{
 			  position: absolute;
-			  top: 4.5vw;
+			  top: 1.9vw;
 			  right: 3vw;
 			}
 			#svg2{
 			  position: absolute;
-			  top: 3vw;
+			  top: 1.2vw;
 			  left: 2vw;
 			}
 			
 			.dropDowns{
 				margin-top:1.8vw;
+				margin-bottom: 0;
 			}
 			.dropDowns p{
 				margin:0;
-			}
-			
-			#xAxis{
-			  font-size: 0.9vw;
-			  position: absolute;
-			  width: 5%;
-			  left: 5%;
-			}
-			
-			#dropDown3{
-			  position: absolute;
-			  width: 7%;
-			  left: 9%;
+				width:50%;
 			}
 			
 			#yAxis{
 			  font-size: 0.9vw;
 			  position: absolute;
 			  width: 5%;
-			  left: 15.5%;
+			  left: 10%;
+			}
+			
+			#dropDown3{
+			  position: absolute;
+			  width: 7%;
+			  left: 14%;
+			}
+			
+			#xAxis{
+			  font-size: 0.9vw;
+			  position: absolute;
+			  width: 5%;
+			  left: 20.5%;
 			}
 			
 			#dropDown2{
 			  position: absolute;
 			  width: 7%;
-			  left: 19.5%;
+			  left: 24.5%;
 			}
 			
 			#team{
 			  font-size: 0.9vw;
 			  position: absolute;
 			  width: 5%;
-			  left: 26%;
+			  left: 31%;
 			}
 			
 			#dropDown4{
 			  position: absolute;
 			  width: 7%;
-			  left: 30%;
+			  left: 35%;
 			}
 			
 			#player{
 			  font-size: 0.9vw;
 			  position: absolute;
 			  width: 5%;
-			  left: 36.5%;
+			  left: 41.5%;
 			}
 			
 			#dropDown{
 			  position: absolute;
 			  width: 10%;
-			  left: 40.5%;
+			  left: 45.5%;
 			}
 			
 			.legend {
@@ -134,12 +137,12 @@
 			<p class="instructions">click a dot to change the radar selection</p>
 		</div>
 		<div class="dropDowns">
-			<p id="xAxis">X-Axis</p>
+			<p id="yAxis">Y-Axis</p>
 			<select name="dropDown3" onclick="changeAxis(document.getElementById('dropDown2').value, 
 				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
 				id="dropDown3">
 			</select>
-			<p id="yAxis">Y-Axis</p>
+			<p id="xAxis">X-Axis</p>
 			<select name="dropDown2" onclick="changeAxis(document.getElementById('dropDown2').value, 
 				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
 				id="dropDown2">
@@ -168,8 +171,8 @@
 	var player = 5;
 	var names = [];
 	
-	var margin = {top: 40, right: 100, bottom: 100, left: 100},
-				width = Math.min(640, window.innerWidth - 10) - margin.left - margin.right,
+	var margin = {top: 60, right: 100, bottom: 100, left: 100},
+				width = Math.min(620, window.innerWidth - 10) - margin.left - margin.right,
 				height = Math.min(width, window.innerHeight - margin.top - margin.bottom - 20);
 	
 	var color = d3.scaleOrdinal(d3.schemeCategory10);
@@ -379,7 +382,7 @@
 			
 			var cfg = {
 			 w: 700,				//Width of the circle
-			 h: 700,				//Height of the circle
+			 h: 600,				//Height of the circle
 			 margin: {top: 20, right: 20, bottom: 20, left: 20}, //The margins of the SVG
 			 levels: 3,				//How many levels or inner circles should there be drawn
 			 maxValue: 0, 			//What is the value that the biggest circle will represent
@@ -504,6 +507,7 @@
 				.attr("y", function(d, i){ return rScale(maxValue * cfg.labelFactor) * Math.sin(angleSlice*i - Math.PI/2); })
 				.text(function(d){return d})
 				.call(wrap, cfg.wrapWidth);
+			
 
 			/////////////////////////////////////////////////////////
 			///////////// Draw the radar chart blobs ////////////////
@@ -690,7 +694,7 @@
 		svg2.append("text")             
 			.attr("transform",
 			"translate(" + (scatterWidth/2) + " ," + 
-								 (scatterHeight + scatterMargin.top + 10) + ")")
+								 (scatterHeight + scatterMargin.top + 20) + ")")
 			.style("text-anchor", "middle")
 			.style("font-size", "20px")
 			.text(xAxis);
@@ -734,7 +738,7 @@
 		
 		//add node labels
 		node.append("text")
-			.attr("dx", function (d) { return x(eval("d." + xAxis)); } )
+			.attr("dx", function (d) { return x(eval("d." + xAxis));} )
 			.attr("dy", function (d) { return y(eval("d." + yAxis)) - 11; } )
 			.text(function(d) { return d.Player })
 			.attr("text-anchor", "middle");
