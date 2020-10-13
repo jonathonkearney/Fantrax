@@ -56,31 +56,63 @@
 			  left: 2vw;
 			}
 			
-			#dropDown{
+			.dropDowns{
+				margin-top:1.8vw;
+			}
+			.dropDowns p{
+				margin:0;
+			}
+			
+			#xAxis{
+			  font-size: 0.9vw;
 			  position: absolute;
-			  top: 2vw;
-			  width: 10%;
-			  right: 14.5vw;
+			  width: 5%;
+			  left: 5%;
 			}
 			
 			#dropDown3{
 			  position: absolute;
-			  top: 2vw;
 			  width: 7%;
-			  left: 20%;
+			  left: 9%;
 			}
+			
+			#yAxis{
+			  font-size: 0.9vw;
+			  position: absolute;
+			  width: 5%;
+			  left: 15.5%;
+			}
+			
 			#dropDown2{
 			  position: absolute;
-			  top: 2vw;
 			  width: 7%;
-			  left: 28%;
+			  left: 19.5%;
+			}
+			
+			#team{
+			  font-size: 0.9vw;
+			  position: absolute;
+			  width: 5%;
+			  left: 26%;
 			}
 			
 			#dropDown4{
 			  position: absolute;
-			  top: 2vw;
 			  width: 7%;
-			  left: 36%;
+			  left: 30%;
+			}
+			
+			#player{
+			  font-size: 0.9vw;
+			  position: absolute;
+			  width: 5%;
+			  left: 36.5%;
+			}
+			
+			#dropDown{
+			  position: absolute;
+			  width: 10%;
+			  left: 40.5%;
 			}
 			
 			.legend {
@@ -96,25 +128,29 @@
 	</head>
 	<body>
 		<div class="title">
-			<p class="title"><strong>Fantrax</strong></p>
+			<p class="title"><strong>Fantrax</strong> per <strong>90</strong></p>
 		</div>
 		<div class="instructions">
 			<p class="instructions">click a dot to change the radar selection</p>
 		</div>
 		<div class="dropDowns">
+			<p id="xAxis">X-Axis</p>
 			<select name="dropDown3" onclick="changeAxis(document.getElementById('dropDown2').value, 
 				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
 				id="dropDown3">
 			</select>
+			<p id="yAxis">Y-Axis</p>
 			<select name="dropDown2" onclick="changeAxis(document.getElementById('dropDown2').value, 
 				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
 				id="dropDown2">
 			</select>
+			<p id="team">Team</p>
 			<select name="dropDown4" onclick="changeAxis(document.getElementById('dropDown2').value, 
 				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
 				id="dropDown4">
 				<option value="ALL">ALL</option>
 			</select>
+			<p id="player">Player</p>
 			<select name="dropDown" onclick="radarSelector(document.getElementById('dropDown').value)" id="dropDown">
 			</select>
 		</div>
@@ -132,7 +168,7 @@
 	var player = 5;
 	var names = [];
 	
-	var margin = {top: 60, right: 100, bottom: 100, left: 100},
+	var margin = {top: 40, right: 100, bottom: 100, left: 100},
 				width = Math.min(640, window.innerWidth - 10) - margin.left - margin.right,
 				height = Math.min(width, window.innerHeight - margin.top - margin.bottom - 20);
 	
@@ -174,7 +210,7 @@
 	////////////////////////////////////////////////////////////// 
 	
 	// set the dimensions and margins of the graph
-	var scatterMargin = {top: 30, right: 90, bottom: 50, left: 80},
+	var scatterMargin = {top: 20, right: 90, bottom: 50, left: 80},
 		scatterWidth = 900 - scatterMargin.left - scatterMargin.right,
 		scatterHeight = 600 - scatterMargin.top - scatterMargin.bottom;
 	
