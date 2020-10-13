@@ -23,36 +23,64 @@
 				cursor: default;
 			}
 			
+			div{
+				position: relative;
+			}
+			
+			.title{
+				font-size: 4vw;
+				color: black;
+				font-family: 'Open Sans', sans-serif;
+				margin-top: 0;
+				height: 3.5vw;
+			}
+			
+			.instructions{
+				font-size: 1vw;
+				color: black;
+				font-family: 'Open Sans', sans-serif;
+				top: 1vw;
+				height: 1vw;
+				left: 22vw;
+				text-align: left;
+			}
 			
 			#svg{
-			  position: fixed;
+			  position: absolute;
 			  top: 4.5vw;
-			  right: 2.2vw;
+			  right: 3vw;
 			}
 			#svg2{
-			  position: fixed;
+			  position: absolute;
 			  top: 3vw;
-			  left: 0;
+			  left: 2vw;
 			}
 			
 			#dropDown{
-			  position: fixed;
+			  position: absolute;
 			  top: 2vw;
 			  width: 10%;
-			  left: 72%;
+			  right: 14.5vw;
 			}
 			
 			#dropDown3{
-			  position: fixed;
+			  position: absolute;
 			  top: 2vw;
 			  width: 7%;
 			  left: 20%;
 			}
 			#dropDown2{
-			  position: fixed;
+			  position: absolute;
 			  top: 2vw;
 			  width: 7%;
 			  left: 28%;
+			}
+			
+			#dropDown4{
+			  position: absolute;
+			  top: 2vw;
+			  width: 7%;
+			  left: 36%;
 			}
 			
 			.legend {
@@ -67,10 +95,25 @@
 	
 	</head>
 	<body>
+		<div class="title">
+			<p class="title"><strong>Fantrax</strong></p>
+		</div>
+		<div class="instructions">
+			<p class="instructions">click a dot to change the radar selection</p>
+		</div>
 		<div class="dropDowns">
-			<select name="dropDown3" onclick="changeAxis(document.getElementById('dropDown2').value, document.getElementById('dropDown3').value)" id="dropDown3">
+			<select name="dropDown3" onclick="changeAxis(document.getElementById('dropDown2').value, 
+				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
+				id="dropDown3">
 			</select>
-			<select name="dropDown2" onclick="changeAxis(document.getElementById('dropDown2').value, document.getElementById('dropDown3').value)" id="dropDown2">
+			<select name="dropDown2" onclick="changeAxis(document.getElementById('dropDown2').value, 
+				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
+				id="dropDown2">
+			</select>
+			<select name="dropDown4" onclick="changeAxis(document.getElementById('dropDown2').value, 
+				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
+				id="dropDown4">
+				<option value="ALL">ALL</option>
 			</select>
 			<select name="dropDown" onclick="radarSelector(document.getElementById('dropDown').value)" id="dropDown">
 			</select>
@@ -131,7 +174,7 @@
 	////////////////////////////////////////////////////////////// 
 	
 	// set the dimensions and margins of the graph
-	var scatterMargin = {top: 60, right: 90, bottom: 50, left: 80},
+	var scatterMargin = {top: 30, right: 90, bottom: 50, left: 80},
 		scatterWidth = 900 - scatterMargin.left - scatterMargin.right,
 		scatterHeight = 600 - scatterMargin.top - scatterMargin.bottom;
 	
@@ -154,6 +197,7 @@
 			o.Minutes = tempData2[i].Min;
 			o.Status = tempData[i].Status;
 			o.FPtsp90 = tempData[i].FPts;
+			o.Team = tempData[i].Team;
 			if(o.Minutes > 90 && o.FPtsp90 > 0 ){ //to remove some extreme cases and to avoid div/0
 				o.FPtsp90 = (tempData[i].FPts / o.Minutes) *90;
 				o.Sp90 = (tempData2[i].S / o.Minutes) *90;
@@ -235,6 +279,20 @@
 			dropDown3.add(option);
 		}
 		
+		//create the Team name Scatterplot dropdown
+		var items = [];
+		var dropDown4 = document.getElementById("dropDown4");
+		for (var i = 0; i < theData.length; i++) {
+			items.push(theData[i].Team);
+		}
+		var uniqueItems = Array.from(new Set(items))
+		console.log(uniqueItems);
+		for (var i = 0; i < uniqueItems.length; i++) {
+			var option = document.createElement("option");
+			option.text = uniqueItems[i];
+			dropDown4.add(option);
+		}
+		
 		//Create a list of names to get the index for the selection
 		for (var i = 0; i < theData.length; i++) {
 			name = theData[i].Player;
@@ -245,7 +303,10 @@
 		radarSelector(theData[0].Player);
 		
 		//Call function to draw the scatterplot
-		scatterPlot(data[0][1].axis, data[0][2].axis); //SOT and S
+		scatterPlot(data[0][1].axis, data[0][2].axis, "ALL"); //SOT and S
+		
+		document.getElementById("dropDown3").value = data[0][2].axis;
+		document.getElementById("dropDown2").value = data[0][1].axis;
 		
 		});//CSV tempData2
 	});//CSV tempData
@@ -547,11 +608,21 @@
 			
 	}//RadarChart
 	
-	function scatterPlot(xAxis, yAxis) {
+	function scatterPlot(xAxis, yAxis, team) {
 		
 		//Remove whatever chart with the same id/class was present before
 		d3.select("#scatterPlot").select("svg").remove();
 		
+		//Filter by the team specified
+		var scatterData = []; 
+		for (var i = 0; i < theData.length; i++) {
+			if(team == "ALL"){
+				scatterData.push(theData[i]);
+			}
+			if(theData[i].Team == team){
+				scatterData.push(theData[i]);
+			}
+		}
 		
 		// append the svg object to the body of the page
 		var svg2 = d3.select("#scatterPlot")
@@ -600,7 +671,7 @@
 		
 		// Add nodes
 		var node = svg2.selectAll(".node")
-			.data(theData)
+			.data(scatterData)
 			.enter()
 			.append('g')
 			.attr("class", "node")
@@ -615,14 +686,13 @@
 					.attr("cy", function (d) { return y(eval("d." + yAxis)); } )
 					.attr("r", 7)
 					.style("fill", function (d){
-						if(d.Player == "Jamie Vardy"){console.log("Jamie was drawn")}
 						var status = d.Status;
 						if(d.Status == "FA"){return "green";}
 						else if (status.charAt(1) == "("){return "orange";} //all waivers have ( as second character
 						else{return "red";}
 					
 					})
-					.style("opacity", 0.4)
+					.style("opacity", 0.6)
 					.style("stroke", "white")
 
 		
@@ -637,8 +707,8 @@
 		
 	}//Scatterplot
 	
-	function changeAxis(xAxis, yAxis){
-		scatterPlot(xAxis, yAxis);
+	function changeAxis(xAxis, yAxis, team){
+		scatterPlot(xAxis, yAxis, team);
 	}
 	
 	</script>
