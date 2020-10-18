@@ -8,6 +8,10 @@
 		<link href="https://fonts.googleapis.com/css?family=Open+Sans:400,300" rel='stylesheet' type='text/css'>
 		<link href='https://fonts.googleapis.com/css?family=Raleway' rel='stylesheet' type='text/css'>
 
+		<!-- Tabulator -->
+		<link href="https://unpkg.com/tabulator-tables@4.8.2/dist/css/tabulator.min.css" rel="stylesheet">
+		<script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.8.2/dist/js/tabulator.min.js"></script>	
+			
 		<!-- D3.js -->
 		<script src="https://d3js.org/d3.v6.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/gh/bumbeishvili/d3-tip-for-v6@4/d3-tip.min.js"></script>
@@ -22,23 +26,7 @@
 				text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff;
 				cursor: default;
 			}
-			
-			table {
-				border-spacing: 0;
-				width: 100%;
-				border: 1px solid #ddd;
-			}
-
-			th, td {
-				text-align: left;
-				padding: 16px;
-			}
-
-			tr:nth-child(even) {
-				background-color: #f2f2f2
-			}
-			
-			
+	
 			.title{
 				font-size: 3.8vw;
 				color: black;
@@ -47,22 +35,25 @@
 			}
 			div .title{
 				top:0;
+				margin: 0;
 			}
 			
 			.instructions{
 				font-size: 1vw;
 				color: black;
 				font-family: 'Open Sans', sans-serif;
-				top: 1vw;
-				height: 1vw;
+				top: 0.8vw;
 				text-align: center;
+				margin:0;
+				margin-bottom:0.7vw;
 			}
+			
 			
 			.radarChart{
 				width:40%;
 				position: absolute;
-				top: 13.5vw;
-				left: 54%;
+				top: 11.5vw;
+				right: 5%;
 				margin:0;
 			}
 			#svg{
@@ -71,8 +62,8 @@
 			
 			#scatterPlot{
 				position: absolute;
-				right: 40%;
-				top: 12vw;
+				left: 5%;
+				top: 9.8vw;
 				margin:0;
 				width:60%
 			}
@@ -83,12 +74,14 @@
 			.table {
 				position: absolute;
 				top: 50vw;
-				width:100%;
+				width:90%;
+				left:5%;
 			}
 			
 			.dropDowns{
 				margin-top:1.8vw;
-				margin-bottom: 0;
+				margin-bottom: 1vw;
+				margin:0;
 			}
 			.dropDowns p{
 				margin:0;
@@ -147,6 +140,12 @@
 			  left: 60.6%;
 			}
 			
+			#dropDown5{
+			  position: absolute;
+			  width: 10%;
+			  left: 72.6%;
+			}
+			
 			.legend {
 				font-family: 'Raleway', sans-serif;
 				fill: #333333;
@@ -163,49 +162,57 @@
 			<p class="title"><strong>Fantrax</strong> per <strong>90</strong></p>
 		</div>
 		<div class="instructions">
-			<p class="instructions">click a dot to change the radar selection</p>
+			<p class="instructions">click a dot or table row below to change the radar selection</p>
 		</div>
 		<div class="dropDowns">
 			<p id="yAxis">Y-Axis</p>
-			<select name="dropDown3" onclick="changeAxis(document.getElementById('dropDown2').value, 
-				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
+			<select name="dropDown3" onclick="changeAxis(
+				document.getElementById('dropDown2').value, 
+				document.getElementById('dropDown3').value, 
+				document.getElementById('dropDown4').value, 
+				document.getElementById('dropDown5').value)
+				"
 				id="dropDown3">
 			</select>
 			<p id="xAxis">X-Axis</p>
-			<select name="dropDown2" onclick="changeAxis(document.getElementById('dropDown2').value, 
-				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
+			<select name="dropDown2" onclick="changeAxis(
+				document.getElementById('dropDown2').value, 
+				document.getElementById('dropDown3').value, 
+				document.getElementById('dropDown4').value, 
+				document.getElementById('dropDown5').value)
+				"
 				id="dropDown2">
 			</select>
 			<p id="team">Team</p>
-			<select name="dropDown4" onclick="changeAxis(document.getElementById('dropDown2').value, 
-				document.getElementById('dropDown3').value, document.getElementById('dropDown4').value)"
+			<select name="dropDown4" onclick="changeAxis(
+				document.getElementById('dropDown2').value, 
+				document.getElementById('dropDown3').value, 
+				document.getElementById('dropDown4').value, 
+				document.getElementById('dropDown5').value)
+				"
 				id="dropDown4">
 				<option value="ALL">ALL</option>
 			</select>
 			<p id="player">Player</p>
 			<select name="dropDown" onclick="radarSelector(document.getElementById('dropDown').value)" id="dropDown">
 			</select>
+			<select name="dropDown5" onclick="changeAxis(
+				document.getElementById('dropDown2').value, 
+				document.getElementById('dropDown3').value, 
+				document.getElementById('dropDown4').value, 
+				document.getElementById('dropDown5').value)
+				"
+				id="dropDown5">
+				<option value="ALL">ALL</option>
+				<option value="WW">WW</option>
+				<option value="Taken">Taken</option>
+				<option value="FA">FA</option>
+			</select>
 		</div>
 		<div id="scatterPlot"></div>
 		<div class="radarChart"></div>
 		<div class="table">
 			<table id="myTable">
-			  <tr>
-				<th>Name</th>
-				<th onclick="sortTable(0)" >FPtsp90</th>
-				<th onclick="sortTable(1)" >Sp90</th>
-				<th onclick="sortTable(2)" >Gp90</th>
-				<th onclick="sortTable(3)" >ATp90</th>
-				<th onclick="sortTable(4)" >KPp90</th>
-				<th onclick="sortTable(5)" >SFTPp90</th>
-				<th onclick="sortTable(6)" >APp90</th>
-				<th onclick="sortTable(7)" >TkWp90</th>
-				<th onclick="sortTable(8)" >Intp90</th>
-				<th onclick="sortTable(9)" >CLRp90</th>
-				<th onclick="sortTable(10)" >AERp90</th>
-				<th onclick="sortTable(11)" >CSDp90</th>
-				<th onclick="sortTable(12)" >CoSp90</th>
-			  </tr>
 			</table>
 		</div>
 		
@@ -262,7 +269,7 @@
 	
 	// set the dimensions and margins of the graph
 	var scatterMargin = {top: 20, right: 90, bottom: 50, left: 80},
-		scatterWidth = 900 - scatterMargin.left - scatterMargin.right,
+		scatterWidth = 700 - scatterMargin.left - scatterMargin.right,
 		scatterHeight = 580 - scatterMargin.top - scatterMargin.bottom;
 	
 
@@ -390,12 +397,13 @@
 		radarSelector(theData[0].Player);
 		
 		//Call function to draw the scatterplot
-		scatterPlot(data[0][1].axis, data[0][2].axis, "ALL"); //SOT and S
+		scatterPlot(data[0][1].axis, data[0][2].axis, "ALL", "ALL"); //SOT and S
 		
 		document.getElementById("dropDown3").value = data[0][2].axis;
 		document.getElementById("dropDown2").value = data[0][1].axis;
 		
 		addTableRows();
+		
 		
 		});//CSV tempData2
 	});//CSV tempData
@@ -698,7 +706,7 @@
 			
 	}//RadarChart
 	
-	function scatterPlot(xAxis, yAxis, team) {
+	function scatterPlot(xAxis, yAxis, team, status) {
 		
 		//Remove whatever chart with the same id/class was present before
 		d3.select("#scatterPlot").select("svg").remove();
@@ -706,11 +714,46 @@
 		//Filter by the team specified
 		var scatterData = []; 
 		for (var i = 0; i < theData.length; i++) {
-			if(team == "ALL"){
+		
+			if(status == "ALL" && team == "ALL"){
 				scatterData.push(theData[i]);
 			}
-			if(theData[i].Team == team){
+			else if(status == "ALL" && theData[i].Team == team){
 				scatterData.push(theData[i]);
+			}
+			else if(status == "WW" && team == "ALL" ){
+				var str = theData[i].Status;
+				if(str.includes("W (") == true){
+					scatterData.push(theData[i]);
+				}
+			}
+			else if(status == "WW" && theData[i].Team == team){
+				var str = theData[i].Status;
+				if(str.includes("W (") == true){
+					scatterData.push(theData[i]);
+				}
+			}
+			else if(status == "FA" && team == "ALL"){
+				if(theData[i].Status == "FA"){
+					scatterData.push(theData[i]);
+				}
+			}
+			else if(status == "FA" && theData[i].Team == team){
+				if(theData[i].Status == "FA"){
+					scatterData.push(theData[i]);
+				}
+			}
+			else if(status == "Taken" && team == "ALL"){
+				var str = theData[i].Status;
+				if(str.includes("W (") == false && theData[i].Status != "FA"){
+					scatterData.push(theData[i]);
+				}
+			}
+			else if(status == "Taken" && theData[i].Team == team){
+				var str = theData[i].Status;
+				if(str.includes("W (") == false && theData[i].Status != "FA"){
+					scatterData.push(theData[i]);
+				}
 			}
 		}
 		
@@ -778,7 +821,7 @@
 					.style("fill", function (d){
 						var status = d.Status;
 						if(d.Status == "FA"){return "green";}
-						else if (status.charAt(1) == "("){return "orange";} //all waivers have ( as second character
+						else if (status.charAt(1) == " "){return "orange";} //all waivers have an empty char as second character
 						else{return "red";}
 					
 					})
@@ -797,8 +840,8 @@
 		
 	}//Scatterplot
 	
-	function changeAxis(xAxis, yAxis, team){
-		scatterPlot(xAxis, yAxis, team);
+	function changeAxis(xAxis, yAxis, team, status){
+		scatterPlot(xAxis, yAxis, team, status);
 	}
 	
 	function sortTable(n) {
@@ -866,45 +909,39 @@
 
 	function addTableRows() {
 		
-		var table = document.getElementById("myTable");
+		console.log(theData);
 		
-		for (var i = 1; i < theData.length; i++) {
-			var row = table.insertRow(i);
-			
-			var cell0 = row.insertCell(0);
-			var cell1 = row.insertCell(1);
-			var cell2 = row.insertCell(2);
-			var cell3 = row.insertCell(3);
-			var cell4 = row.insertCell(4);
-			var cell5 = row.insertCell(5);
-			var cell6 = row.insertCell(6);
-			var cell7 = row.insertCell(7);
-			var cell8 = row.insertCell(8);
-			var cell9 = row.insertCell(9);
-			var cell10 = row.insertCell(10);
-			var cell11 = row.insertCell(11);
-			var cell12 = row.insertCell(12);
-			var cell13 = row.insertCell(13);
-			var cell14 = row.insertCell(14);
-
-			
-			cell0.innerHTML = theData[i].Player;
-			cell1.innerHTML = theData[i].FPtsp90;
-			cell2.innerHTML = theData[i].Sp90;
-			cell3.innerHTML = theData[i].Gp90;
-			cell4.innerHTML = theData[i].KPp90;
-			cell5.innerHTML = theData[i].SFTPp90;
-			cell6.innerHTML = theData[i].SFTPp90;
-			cell7.innerHTML = theData[i].APp90;
-			cell8.innerHTML = theData[i].TkWp90;
-			cell9.innerHTML = theData[i].Intp90;
-			cell10.innerHTML = theData[i].CLRp90;
-			cell11.innerHTML = theData[i].AERp90;
-			cell12.innerHTML = theData[i].CSDp90;
-			cell13.innerHTML = theData[i].CoSp90;
-			
-		}
-
+		var table = new Tabulator("#myTable", {
+			data:theData, 
+			height:600, // set height of table (in CSS or here), this enables the Virtual DOM and improves render speed dramatically (can be any valid css height value)
+			layout:"fitColumns", //fit columns to width of table (optional)
+			columns:[ //Define Table Columns
+				{title:"Player", field:"Player"},
+				{title:"Minutes", field:"Minutes"},
+				{title:"Status", field:"Status"},
+				{title:"Team", field:"Team"},
+				{title:"FPtsp90", field:"FPtsp90"},
+				{title:"Sp90", field:"Sp90"},
+				{title:"SOTp90", field:"SOTp90"},
+				{title:"Gp90", field:"Gp90"},
+				{title:"ATp90", field:"ATp90"},
+				{title:"KPp90", field:"KPp90"},
+				{title:"SFTPp90", field:"SFTPp90"},
+				{title:"APp90", field:"APp90"},
+				{title:"TkWp90", field:"TkWp90"},
+				{title:"Intp90", field:"Intp90"},
+				{title:"CLRp90", field:"CLRp90"},
+				{title:"AERp90", field:"AERp90"},
+				{title:"CSDp90", field:"CSDp90"},
+				{title:"CoSp90", field:"CoSp90"},
+			],
+			cellClick:function(e, cell){ //trigger an alert message when the row is clicked
+				document.getElementById('dropDown').value = cell.getData().Player
+				radarSelector(cell.getData().Player);
+			},
+		});
+		
+		table.setData(theData);
 	}
 	
 	</script>
