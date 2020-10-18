@@ -46,7 +46,7 @@
 				top: 0.8vw;
 				text-align: center;
 				margin:0;
-				margin-bottom:0.7vw;
+				margin-bottom:0.5vw;
 			}
 			
 			#graphics{
@@ -170,6 +170,31 @@
 			.tooltip {
 				fill: #333333;
 			}
+			
+			.marquee {
+				width: 80%;
+				margin-left: 10%;
+				margin-bottom: 0.5vw;
+			}
+			
+			/* Make it a marquee */
+			.marqueeText {
+				margin: 0 auto;
+				white-space: nowrap;
+				overflow: hidden;
+			}
+
+			.marqueeText span {
+				display: inline-block;
+				padding-left: 100%;
+				animation: marquee 80s linear infinite;
+			}
+
+			/* Make it move */
+			@keyframes marquee {
+				0%   { transform: translate(0, 0); }
+				100% { transform: translate(-100%, 0); }
+			}
 		</style>
 	
 	</head>
@@ -180,6 +205,9 @@
 		<div class="instructions">
 			<p class="instructions">Click a dot or table row below to change the radar selection.
 			Only players with 90+ mins and positive points are displayed</p>
+		</div>
+		<div class="marquee">
+			<p class="marqueeText"><span id="marqueeSpan"></span></p>
 		</div>
 		<div class="dropDowns">
 			<div>
@@ -454,6 +482,10 @@
 		document.getElementById("dropDown2").value = data[0][1].axis;
 		
 		addTableRows();
+		
+		
+		
+		addMarquee();
 		
 		
 		});//CSV tempData2
@@ -1030,6 +1062,90 @@
 		});
 		
 		table.setData(theData);
+	}
+	
+	function addMarquee(){
+		
+		var topFPtsp90 = "";
+		var topSp90 = "";
+		var topSOTp90 = "";
+		var topGp90 = "";
+		var topATp90 = "";
+		var topKPp90 = "";
+		var topSFTPp90 = "";
+		var topAPp90 = "";
+		var topTkWp90 = "";
+		var topIntp90 = "";
+		var topCLRp90 = "";
+		var topAERp90 = "";
+		var topCSDp90 = "";
+		var topCoSp90 = "";
+		
+		
+		for (var i = 0; i < theData.length; i++) {
+			
+			if(theData[i].FPtsp90 == 1){
+				var topFPtsp90 = theData[i].Player;
+			}
+			if(theData[i].Sp90 == 1){
+				var topSp90 = theData[i].Player;
+			}
+			if(theData[i].SOTp90 == 1){
+				var topSOTp90 = theData[i].Player;
+			}
+			if(theData[i].Gp90 == 1){
+				var topGp90 = theData[i].Player;
+			}
+			if(theData[i].ATp90 == 1){
+				var topATp90 = theData[i].Player;
+			}
+			if(theData[i].KPp90 == 1){
+				var topKPp90 = theData[i].Player;
+			}
+			if(theData[i].SFTPp90 == 1){
+				var topSFTPp90 = theData[i].Player;
+			}
+			if(theData[i].APp90 == 1){
+				var topAPp90 = theData[i].Player;
+			}
+			if(theData[i].TkWp90 == 1){
+				var topTkWp90 = theData[i].Player;
+			}
+			if(theData[i].Intp90 == 1){
+				var topIntp90 = theData[i].Player;
+			}
+			if(theData[i].CLRp90 == 1){
+				var topCLRp90 = theData[i].Player;
+			}
+			if(theData[i].AERp90 == 1){
+				var topAERp90 = theData[i].Player;
+			}
+			if(theData[i].CSDp90 == 1){
+				var topCSDp90 = theData[i].Player;
+			}
+			if(theData[i].CoSp90 == 1){
+				var topCoSp90 = theData[i].Player;
+			}	
+		}
+		
+		var spaces = "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0"
+		document.getElementById('marqueeSpan').innerText = 
+		"Most FPtsp90: " + topFPtsp90 + spaces +
+		"Most Sp90: " + topSp90 + spaces +
+		"Most SOTp90: " + topSOTp90 + spaces +
+		"Most Gp90: " + topGp90 + spaces +
+		"Most ATp90: " + topATp90 + spaces +
+		"Most KPp90: " + topKPp90 + spaces +
+		"Most SFTPp90: " + topSFTPp90 + spaces +
+		"Most APp90: " + topAPp90 + spaces +
+		"Most TkWp90: " + topTkWp90 + spaces +
+		"Most Intp90: " + topIntp90 + spaces +
+		"Most CLRp90: " + topCLRp90 + spaces +
+		"Most AERp90: " + topAERp90 + spaces +
+		"Most CSDp90: " + topCSDp90 + spaces +
+		"Most CoSp90: " + topCoSp90 + spaces
+		;
+		
 	}
 	
 	</script>
