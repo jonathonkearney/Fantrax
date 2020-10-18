@@ -135,17 +135,30 @@
 			  left: 53.6%;
 			}
 			
+			#position{
+			  font-size: 0.9vw;
+			  position: absolute;
+			  width: 5%;
+			  left: 58.5%;;
+			}
+			
+			#dropDown6{
+			  position: absolute;
+			  width: 5%;
+			  left: 62.9%;
+			}
+			
 			#player{
 			  font-size: 0.9vw;
 			  position: absolute;
 			  width: 5%;
-			  left: 58.2%;
+			  left: 67.3%;
 			}
 
 			#dropDown{
 			  position: absolute;
 			  width: 10%;
-			  left: 62.5%;
+			  left: 71.4%;
 			}
 			
 			
@@ -175,7 +188,8 @@
 					document.getElementById('dropDown2').value, 
 					document.getElementById('dropDown3').value, 
 					document.getElementById('dropDown4').value, 
-					document.getElementById('dropDown5').value)
+					document.getElementById('dropDown5').value,
+					document.getElementById('dropDown6').value)
 					"
 					id="dropDown3">
 				</select>
@@ -186,7 +200,8 @@
 					document.getElementById('dropDown2').value, 
 					document.getElementById('dropDown3').value, 
 					document.getElementById('dropDown4').value, 
-					document.getElementById('dropDown5').value)
+					document.getElementById('dropDown5').value,
+					document.getElementById('dropDown6').value)
 					"
 					id="dropDown2">
 				</select>
@@ -197,7 +212,8 @@
 					document.getElementById('dropDown2').value, 
 					document.getElementById('dropDown3').value, 
 					document.getElementById('dropDown4').value, 
-					document.getElementById('dropDown5').value)
+					document.getElementById('dropDown5').value,
+					document.getElementById('dropDown6').value)
 					"
 					id="dropDown4">
 					<option value="ALL">ALL</option>
@@ -209,13 +225,30 @@
 					document.getElementById('dropDown2').value, 
 					document.getElementById('dropDown3').value, 
 					document.getElementById('dropDown4').value, 
-					document.getElementById('dropDown5').value)
+					document.getElementById('dropDown5').value,
+					document.getElementById('dropDown6').value)
 					"
 					id="dropDown5">
 					<option value="ALL">ALL</option>
 					<option value="WW">WW</option>
 					<option value="Taken">Taken</option>
 					<option value="FA">FA</option>
+				</select>
+			</div>
+			<div>
+				<p id="position">Position</p>
+				<select name="dropDown6" onclick="changeAxis(
+					document.getElementById('dropDown2').value, 
+					document.getElementById('dropDown3').value, 
+					document.getElementById('dropDown4').value, 
+					document.getElementById('dropDown5').value,
+					document.getElementById('dropDown6').value)
+					"
+					id="dropDown6">
+					<option value="ALL">ALL</option>
+					<option value="D">D</option>
+					<option value="M">M</option>
+					<option value="F">F</option>
 				</select>
 			</div>
 			<div>
@@ -305,6 +338,7 @@
 
 			var o = {};
 			o.Player = tempData[i].Player;
+			o.Position = tempData[i].Position;
 			o.Minutes = tempData2[i].Min;
 			o.Status = tempData[i].Status;
 			o.FPtsp90 = tempData[i].FPts;
@@ -414,7 +448,7 @@
 		radarSelector(theData[0].Player);
 		
 		//Call function to draw the scatterplot
-		scatterPlot(data[0][1].axis, data[0][2].axis, "ALL", "ALL"); //SOT and S
+		scatterPlot(data[0][1].axis, data[0][2].axis, "ALL", "ALL", "ALL"); //SOT and S
 		
 		document.getElementById("dropDown3").value = data[0][2].axis;
 		document.getElementById("dropDown2").value = data[0][1].axis;
@@ -723,53 +757,90 @@
 			
 	}//RadarChart
 	
-	function scatterPlot(xAxis, yAxis, team, status) {
+	function scatterPlot(xAxis, yAxis, team, status, position) {
 		
 		//Remove whatever chart with the same id/class was present before
 		d3.select("#scatterPlot").select("svg").remove();
 		
-		//Filter by the team specified
+		//Filter by the the arguements
 		var scatterData = []; 
 		for (var i = 0; i < theData.length; i++) {
-		
+			
+			
 			if(status == "ALL" && team == "ALL"){
-				scatterData.push(theData[i]);
-			}
-			else if(status == "ALL" && theData[i].Team == team){
-				scatterData.push(theData[i]);
-			}
-			else if(status == "WW" && team == "ALL" ){
-				var str = theData[i].Status;
-				if(str.includes("W (") == true){
+				if(position == "ALL"){
+					scatterData.push(theData[i]);
+				}
+				else if(theData[i].Position.includes(position)){
 					scatterData.push(theData[i]);
 				}
 			}
-			else if(status == "WW" && theData[i].Team == team){
-				var str = theData[i].Status;
-				if(str.includes("W (") == true){
+			else if(status == "ALL" && theData[i].Team == team){
+				if(position == "ALL"){
 					scatterData.push(theData[i]);
+				}
+				else if(theData[i].Position.includes(position)){
+					scatterData.push(theData[i]);
+				}
+			}
+			else if(status == "WW" && team == "ALL" ){
+				if(theData[i].Status.includes("W (") == true){
+					if(position == "ALL"){
+						scatterData.push(theData[i]);
+					}
+					else if(theData[i].Position.includes(position)){
+						scatterData.push(theData[i]);
+					}
+				}
+			}
+			else if(status == "WW" && theData[i].Team == team){
+				if(theData[i].Status.includes("W (") == true){
+					if(position == "ALL"){
+						scatterData.push(theData[i]);
+					}
+					else if(theData[i].Position.includes(position)){
+						scatterData.push(theData[i]);
+					}
 				}
 			}
 			else if(status == "FA" && team == "ALL"){
 				if(theData[i].Status == "FA"){
-					scatterData.push(theData[i]);
+					if(position == "ALL"){
+						scatterData.push(theData[i]);
+					}
+					else if(theData[i].Position.includes(position)){
+						scatterData.push(theData[i]);
+					}
 				}
 			}
 			else if(status == "FA" && theData[i].Team == team){
 				if(theData[i].Status == "FA"){
-					scatterData.push(theData[i]);
+					if(position == "ALL"){
+						scatterData.push(theData[i]);
+					}
+					else if(theData[i].Position.includes(position)){
+						scatterData.push(theData[i]);
+					}
 				}
 			}
 			else if(status == "Taken" && team == "ALL"){
-				var str = theData[i].Status;
-				if(str.includes("W (") == false && theData[i].Status != "FA"){
-					scatterData.push(theData[i]);
+				if(theData[i].Status.includes("W (") == false && theData[i].Status != "FA"){
+					if(position == "ALL"){
+						scatterData.push(theData[i]);
+					}
+					else if(theData[i].Position.includes(position)){
+						scatterData.push(theData[i]);
+					}
 				}
 			}
 			else if(status == "Taken" && theData[i].Team == team){
-				var str = theData[i].Status;
-				if(str.includes("W (") == false && theData[i].Status != "FA"){
-					scatterData.push(theData[i]);
+				if(theData[i].Status.includes("W (") == false && theData[i].Status != "FA"){
+					if(position == "ALL"){
+						scatterData.push(theData[i]);
+					}
+					else if(theData[i].Position.includes(position)){
+						scatterData.push(theData[i]);
+					}
 				}
 			}
 		}
@@ -857,8 +928,8 @@
 		
 	}//Scatterplot
 	
-	function changeAxis(xAxis, yAxis, team, status){
-		scatterPlot(xAxis, yAxis, team, status);
+	function changeAxis(xAxis, yAxis, team, status, position){
+		scatterPlot(xAxis, yAxis, team, status, position);
 	}
 	
 	function sortTable(n) {
