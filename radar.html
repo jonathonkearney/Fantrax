@@ -38,6 +38,7 @@
 				margin: 0;
 			}
 			
+			
 			.instructions{
 				font-size: 1vw;
 				color: black;
@@ -48,34 +49,29 @@
 				margin-bottom:0.7vw;
 			}
 			
+			#graphics{
+				width:90%;
+				margin-left: 5%;
+				margin-right: 5%;
+				margin-top: 5vh;
+				overflow: auto;
+			}
 			
 			.radarChart{
-				width:40%;
-				position: absolute;
-				top: 11.5vw;
-				right: 5%;
+				float: right;
 				margin:0;
-			}
-			#svg{
-		
 			}
 			
 			#scatterPlot{
-				position: absolute;
-				left: 5%;
-				top: 9.8vw;
+				float: left;
 				margin:0;
-				width:60%
 			}
-			#svg2{
-			
-			}
-			
-			.table {
-				position: absolute;
-				top: 50vw;
+
+			.table {;
 				width:90%;
-				left:5%;
+				margin-left: 5%;
+				margin-right: 5%;
+				margin-top: 5vh;
 			}
 			
 			.dropDowns{
@@ -85,66 +81,73 @@
 			}
 			.dropDowns p{
 				margin:0;
-				width:50%;
 			}
 			
 			#yAxis{
 			  font-size: 0.9vw;
 			  position: absolute;
 			  width: 5%;
-			  left: 25%;
+			  left: 20%;
 			}
 			
 			#dropDown3{
 			  position: absolute;
 			  width: 7%;
-			  left: 29%;
+			  left: 24%;
 			}
 			
 			#xAxis{
 			  font-size: 0.9vw;
 			  position: absolute;
 			  width: 5%;
-			  left: 35.5%;
+			  left: 30.5%;
 			}
 			
 			#dropDown2{
 			  position: absolute;
 			  width: 7%;
-			  left: 39.5%;
+			  left: 34.5%;
 			}
 			
 			#team{
 			  font-size: 0.9vw;
 			  position: absolute;
 			  width: 5%;
-			  left: 46%;
+			  left: 41%;
 			}
 			
 			#dropDown4{
 			  position: absolute;
-			  width: 7%;
-			  left: 50%;
+			  width: 5%;
+			  left: 45%;
+			}
+			
+			#status{
+			  font-size: 0.9vw;
+			  position: absolute;
+			  width: 5%;
+			  left: 49.5%;
+			}
+			
+			#dropDown5{
+			  position: absolute;
+			  width: 5%;
+			  left: 53.6%;
 			}
 			
 			#player{
 			  font-size: 0.9vw;
 			  position: absolute;
 			  width: 5%;
-			  left: 56.5%;
+			  left: 58.2%;
 			}
-			
+
 			#dropDown{
 			  position: absolute;
 			  width: 10%;
-			  left: 60.6%;
+			  left: 62.5%;
 			}
 			
-			#dropDown5{
-			  position: absolute;
-			  width: 10%;
-			  left: 72.6%;
-			}
 			
 			.legend {
 				font-family: 'Raleway', sans-serif;
@@ -162,55 +165,69 @@
 			<p class="title"><strong>Fantrax</strong> per <strong>90</strong></p>
 		</div>
 		<div class="instructions">
-			<p class="instructions">click a dot or table row below to change the radar selection</p>
+			<p class="instructions">Click a dot or table row below to change the radar selection.
+			Only players with 90+ mins and positive points are displayed</p>
 		</div>
 		<div class="dropDowns">
-			<p id="yAxis">Y-Axis</p>
-			<select name="dropDown3" onclick="changeAxis(
-				document.getElementById('dropDown2').value, 
-				document.getElementById('dropDown3').value, 
-				document.getElementById('dropDown4').value, 
-				document.getElementById('dropDown5').value)
-				"
-				id="dropDown3">
-			</select>
-			<p id="xAxis">X-Axis</p>
-			<select name="dropDown2" onclick="changeAxis(
-				document.getElementById('dropDown2').value, 
-				document.getElementById('dropDown3').value, 
-				document.getElementById('dropDown4').value, 
-				document.getElementById('dropDown5').value)
-				"
-				id="dropDown2">
-			</select>
+			<div>
+				<p id="yAxis">Y-Axis</p>
+				<select name="dropDown3" onclick="changeAxis(
+					document.getElementById('dropDown2').value, 
+					document.getElementById('dropDown3').value, 
+					document.getElementById('dropDown4').value, 
+					document.getElementById('dropDown5').value)
+					"
+					id="dropDown3">
+				</select>
+			</div>
+			<div>
+				<p id="xAxis">X-Axis</p>
+				<select name="dropDown2" onclick="changeAxis(
+					document.getElementById('dropDown2').value, 
+					document.getElementById('dropDown3').value, 
+					document.getElementById('dropDown4').value, 
+					document.getElementById('dropDown5').value)
+					"
+					id="dropDown2">
+				</select>
+			</div>
+			<div>
 			<p id="team">Team</p>
-			<select name="dropDown4" onclick="changeAxis(
-				document.getElementById('dropDown2').value, 
-				document.getElementById('dropDown3').value, 
-				document.getElementById('dropDown4').value, 
-				document.getElementById('dropDown5').value)
-				"
-				id="dropDown4">
-				<option value="ALL">ALL</option>
-			</select>
-			<p id="player">Player</p>
-			<select name="dropDown" onclick="radarSelector(document.getElementById('dropDown').value)" id="dropDown">
-			</select>
-			<select name="dropDown5" onclick="changeAxis(
-				document.getElementById('dropDown2').value, 
-				document.getElementById('dropDown3').value, 
-				document.getElementById('dropDown4').value, 
-				document.getElementById('dropDown5').value)
-				"
-				id="dropDown5">
-				<option value="ALL">ALL</option>
-				<option value="WW">WW</option>
-				<option value="Taken">Taken</option>
-				<option value="FA">FA</option>
-			</select>
+				<select name="dropDown4" onclick="changeAxis(
+					document.getElementById('dropDown2').value, 
+					document.getElementById('dropDown3').value, 
+					document.getElementById('dropDown4').value, 
+					document.getElementById('dropDown5').value)
+					"
+					id="dropDown4">
+					<option value="ALL">ALL</option>
+				</select>
+			</div>
+			<div>
+				<p id="status">Status</p>
+				<select name="dropDown5" onclick="changeAxis(
+					document.getElementById('dropDown2').value, 
+					document.getElementById('dropDown3').value, 
+					document.getElementById('dropDown4').value, 
+					document.getElementById('dropDown5').value)
+					"
+					id="dropDown5">
+					<option value="ALL">ALL</option>
+					<option value="WW">WW</option>
+					<option value="Taken">Taken</option>
+					<option value="FA">FA</option>
+				</select>
+			</div>
+			<div>
+				<p id="player">Player</p>
+				<select name="dropDown" onclick="radarSelector(document.getElementById('dropDown').value)" id="dropDown">
+				</select>
+			</div>
 		</div>
-		<div id="scatterPlot"></div>
-		<div class="radarChart"></div>
+		<div id="graphics">
+			<div id="scatterPlot"></div>
+			<div class="radarChart"></div>
+		</div>
 		<div class="table">
 			<table id="myTable">
 			</table>
