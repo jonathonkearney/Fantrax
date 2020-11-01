@@ -243,7 +243,7 @@
 					document.getElementById('dropDown4').value, 
 					document.getElementById('dropDown5').value,
 					document.getElementById('dropDown6').value)
-					"
+					;filterTableByTeam(document.getElementById('dropDown4').value)"
 					id="dropDown4">
 					<option value="ALL">ALL</option>
 				</select>
@@ -256,7 +256,7 @@
 					document.getElementById('dropDown4').value, 
 					document.getElementById('dropDown5').value,
 					document.getElementById('dropDown6').value)
-					"
+					;filterTableByStatus(document.getElementById('dropDown5').value)"
 					id="dropDown5">
 					<option value="ALL">ALL</option>
 					<option value="WW">WW</option>
@@ -302,8 +302,18 @@
 	
 	var theData = [];
 	
+	var tableFilters = [];
+	
 	var player = 5;
 	var names = [];
+	
+	var table; //make this global
+	var fantraxTeams = new Set(); //this is like joe, MKJ
+	var teamFilterType;
+	var teamFilterValue;
+	var statusFilterType;
+	var statusFilterValue;
+	
 	
 	var margin = {top: 60, right: 100, bottom: 100, left: 100},
 				width = Math.min(620, window.innerWidth - 10) - margin.left - margin.right,
@@ -484,9 +494,9 @@
 		
 		addTableRows();
 		
-		
-		
 		addMarquee();
+		
+		getFantraxTeams(); //get a list of players to use as table filters
 		
 		
 		});//CSV tempData2
@@ -1032,7 +1042,7 @@
 		
 		console.log(theData);
 		
-		var table = new Tabulator("#myTable", {
+		table = new Tabulator("#myTable", {
 			data:theData, 
 			height:600, // set height of table (in CSS or here), this enables the Virtual DOM and improves render speed dramatically (can be any valid css height value)
 			layout:"fitColumns", //fit columns to width of table (optional)
@@ -1147,6 +1157,65 @@
 		"Most CoS p90: " + topCoSp90 + spaces
 		;
 		
+	}
+	function getFantraxTeams(){
+		
+		for (var i = 0; i < theData.length; i++) {
+			fantraxTeams.add(theData[i].Status);
+		}
+		fantraxTeams.delete("W (Mon)");
+		fantraxTeams.delete("W (Tue)");
+		fantraxTeams.delete("W (Wed)");
+		fantraxTeams.delete("W (Thu)");
+		fantraxTeams.delete("W (Fri)");
+		fantraxTeams.delete("W (Sat)");
+		fantraxTeams.delete("W (Sun)");
+		fantraxTeams.delete("FA");
+		
+		fantraxTeams = Array.from(fantraxTeams);
+	}
+	
+	function filterTableByTeam(team){
+		
+		table.removeFilter("Team", teamFilterType, teamFilterValue);
+		
+		if(team == "ALL"){
+			teamFilterType = "!=";
+			teamFilterValue = "blabla"; //blabla can be anything
+			table.addFilter("Team", teamFilterType, teamFilterValue);
+		}
+		else{
+			teamFilterType = "=";
+			teamFilterValue = team;
+			table.addFilter("Team", teamFilterType, teamFilterValue);
+		}
+		console.log(table.getFilters());
+	}
+	function filterTableByStatus(status){
+		
+		table.removeFilter("Status", statusFilterType, statusFilterValue);
+		
+		if(status == "FA"){
+			statusFilterType = "=";
+			statusFilterValue = "FA";
+			table.addFilter("Status", statusFilterType, statusFilterValue);
+		}
+		if(status == "WW"){
+			statusFilterType = "like";
+			statusFilterValue = "W (";
+			table.addFilter("Status", statusFilterType, statusFilterValue);
+		}
+		if(status == "Taken"){
+			statusFilterType = "in";
+			statusFilterValue = fantraxTeams;
+			table.addFilter("Status", statusFilterType, statusFilterValue);
+		}
+		if(status == "ALL"){
+			statusFilterType = "!="
+			statusFilterValue = "blabla"; //blabla can be anything
+			table.addFilter("Status", statusFilterType, statusFilterValue);
+		}
+		console.log(table.getFilters());
 	}
 	
 	</script>
