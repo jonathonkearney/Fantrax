@@ -1,11 +1,12 @@
 library(ggplot2)
 library(tidyverse)
 
+#set the directory as the R folder and save the two tables as variables
 setwd("C:/Users/Joe/Documents/R")
-
 FS <- read.csv("FS.csv", header = TRUE)
 FT <- read.csv("FT.csv", header = TRUE)
 
+#merge the two tables together
 df <- merge(x = FT, y = FS)
 
 minMins <- 180
@@ -19,6 +20,7 @@ df$AP <- as.numeric(as.character(df$AP))
 #remove all players with less than a certain amount of mins
 df <- subset(df, Min > minMins)
 
+#change certain column names to .90 names
 for(i in 1:ncol(df)){
   x <- colnames(df)[i]
   if(x != "ID" && x != "Player" && x != "Team" && x != "Position"
