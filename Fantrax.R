@@ -45,9 +45,10 @@ ui <- fluidPage(
     
     sidebarPanel(
       
-      # selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "ARS"),
+      selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
+      selectInput("status","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
       selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "A.90"),
-      selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "Min.GP")
+      selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "Min.GP"),
       
     ),
     
@@ -62,17 +63,16 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   
-  # dataset <- reactive({
-  #   filtered <-
-  #     df %>%
-  #     filter(Team == input$team)    
-  # })
-  
-  
   output$plot <- renderPlot({
-    #ggplot(dataset(), aes(colour = Position)) + aes_string(x = input$xAxis, y = input$yAxis) +
+    if (input$team != "All") {
+      df <- filter(df, Team == input$team)
+    }
+    if (input$status != "All") {
+      df <- filter(df, Status == input$status)
+    }
+    
     ggplot(df, aes(colour = Position)) + aes_string(x = input$xAxis, y = input$yAxis) +
-        geom_point() + # Show dots
+        geom_point() +
         geom_text(
           aes(label = Player),
           check_overlap = T,
