@@ -1,5 +1,8 @@
 library(ggplot2)
 library(tidyverse)
+library(shiny)
+library(dplyr)
+library(DT)
 
 #set the directory as the R folder and save the two tables as variables
 setwd("C:/Users/Joe/Documents/R")
@@ -20,27 +23,69 @@ df$AP <- as.numeric(as.character(df$AP))
 #remove all players with less than a certain amount of mins
 df <- subset(df, Min > minMins)
 
-#change certain column names to .90 names
+#Make new columns for the .90 scores
 for(i in 1:ncol(df)){
   x <- colnames(df)[i]
   if(x != "ID" && x != "Player" && x != "Team" && x != "Position"
-     && x != "Rk" && x != "Status" && x != "Opponent"
-     && x != "GP" && x != "PC" && x != "Min"){
-    colnames(df)[i] <- paste(colnames(df)[i], ".90", sep="" )
+     && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G"
+     && x != "GP" && x != "PC" && x != "Min" && x != "G.G"){
+    name <- paste(colnames(df)[i], ".90", sep="")
+    df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
 }
 
-#Make most scores now be based of 90 mins
-for(i in 1:ncol(df)) { 
-  if(endsWith(colnames(df)[i], '90')){
-    df[,i] <- round((df[,i] / df$Min)*90, digits = 2)
-  }
-}
+df$Min.GP <- round((df$Min / df$GP), digits = 2)
 
-ggplot(df, aes(G.90, A.90, colour = Position)) +
-  geom_point() + # Show dots
-  geom_text(
-    aes(label = Player),
-    check_overlap = T,
-    adj = -0.1
+ui <- fluidPage(
+  
+  # App title ----
+  titlePanel("Fantrax"),
+  
+  sidebarLayout(
+    
+    sidebarPanel(
+      
+      # selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "ARS"),
+      selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "A.90"),
+      selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "Min.GP")
+      
+    ),
+    
+    mainPanel(
+      plotOutput(outputId = "plot",width = "1000px", height = "700px"),
+      br(),
+      DT::dataTableOutput("table")
+      
+    )
   )
+)
+
+server <- function(input, output) {
+  
+  # dataset <- reactive({
+  #   filtered <-
+  #     df %>%
+  #     filter(Team == input$team)    
+  # })
+  
+  
+  output$plot <- renderPlot({
+    #ggplot(dataset(), aes(colour = Position)) + aes_string(x = input$xAxis, y = input$yAxis) +
+    ggplot(df, aes(colour = Position)) + aes_string(x = input$xAxis, y = input$yAxis) +
+        geom_point() + # Show dots
+        geom_text(
+          aes(label = Player),
+          check_overlap = T,
+          adj = -0.1,
+          vjust="inward",
+          hjust="inward"
+        ) +
+          coord_flip(clip = "off")
+  }, res = 90)
+  
+  output$table = DT::renderDataTable({
+    df %>% select(!c("ID", "Opponent", "Rk"))
+  })
+  
+}
+shinyApp(ui, server)
