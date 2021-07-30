@@ -28,7 +28,7 @@ for(i in 1:ncol(df)){
   x <- colnames(df)[i]
   if(x != "ID" && x != "Player" && x != "Team" && x != "Position"
      && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G"
-     && x != "GP" && x != "PC" && x != "Min" && x != "G.G" && x != "Total"){
+     && x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total"){
     name <- paste(colnames(df)[i], ".90", sep="")
     df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
@@ -44,6 +44,9 @@ for(i in 1:ncol(df)){
     df$Total <- df$Total + (df[,i]/ max(df[,i]))
   }
 }
+#Make a score that calculates the total and the Min.90 together
+#Not sure if Total*Min.GP is the right calc or not...
+df$Total.Min.GP <- df$Total * df$Min.GP
 
 ui <- fluidPage(
   
@@ -59,7 +62,7 @@ ui <- fluidPage(
       selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
       selectInput("status","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
       selectInput("position","Choose a Position", choices = c("All",unique(df$Position)), selected = "All"),
-      selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "Total"),
+      selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "FP.G"),
       selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "Min.GP"),
       
     ),
@@ -102,7 +105,7 @@ server <- function(input, output) {
   
   output$table = DT::renderDataTable({
     # df %>% select(!c("ID", "Opponent", "Rk"))
-    df %>% select(c("Player", "Status", "Total", "Min.GP", "G.90", "A.90"))
+    df %>% select(c("Player", "Team", "Status", "FP.G", "FPts.90", "Total", "Total.Min.GP", "Min.GP", "G.90", "A.90"))
   })
   
 }
