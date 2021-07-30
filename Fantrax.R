@@ -28,13 +28,22 @@ for(i in 1:ncol(df)){
   x <- colnames(df)[i]
   if(x != "ID" && x != "Player" && x != "Team" && x != "Position"
      && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G"
-     && x != "GP" && x != "PC" && x != "Min" && x != "G.G"){
+     && x != "GP" && x != "PC" && x != "Min" && x != "G.G" && x != "Total"){
     name <- paste(colnames(df)[i], ".90", sep="")
     df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
 }
 
 df$Min.GP <- round((df$Min / df$GP), digits = 2)
+
+#Make a total column that is the sum of all .90 scores (as % of their max scores)
+df$Total <- 0
+for(i in 1:ncol(df)){
+  x <- colnames(df)[i]
+  if(endsWith(x, ".90")){
+    df$Total <- df$Total + (df[,i]/ max(df[,i]))
+  }
+}
 
 ui <- fluidPage(
   
@@ -50,7 +59,7 @@ ui <- fluidPage(
       selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
       selectInput("status","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
       selectInput("position","Choose a Position", choices = c("All",unique(df$Position)), selected = "All"),
-      selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "A.90"),
+      selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "Total"),
       selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "Min.GP"),
       
     ),
@@ -91,9 +100,10 @@ server <- function(input, output) {
     
   }, res = 90)
   
-  # output$table = DT::renderDataTable({
-  #   df %>% select(!c("ID", "Opponent", "Rk"))
-  # })
+  output$table = DT::renderDataTable({
+    # df %>% select(!c("ID", "Opponent", "Rk"))
+    df %>% select(c("Player", "Status", "Total", "Min.GP", "G.90", "A.90"))
+  })
   
 }
 shinyApp(ui, server)
