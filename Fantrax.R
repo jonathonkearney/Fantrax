@@ -37,16 +37,16 @@ for(i in 1:ncol(df)){
 df$Min.GP <- round((df$Min / df$GP), digits = 2)
 
 #Make a total column that is the sum of all .90 scores (as % of their max scores)
-df$Total <- 0
+df$Total.90 <- 0
 for(i in 1:ncol(df)){
   x <- colnames(df)[i]
   if(endsWith(x, ".90")){
-    df$Total <- df$Total + (df[,i]/ max(df[,i]))
+    if(x != "RC.90" || x != "YC.90" || x != "DIS.90" || x != "ErG.90" 
+       || x != "OG.90" || x != "Off.90" || x != "FPts.90"){
+      df$Total.90 <- df$Total.90 + (df[,i]/ max(df[,i]))
+    }
   }
 }
-#Make a score that calculates the total and the Min.90 together
-#Not sure if Total*Min.GP is the right calc or not...
-df$Total.Min.GP <- df$Total * df$Min.GP
 
 ui <- fluidPage(
   
@@ -68,7 +68,7 @@ ui <- fluidPage(
     ),
     
     mainPanel(
-      plotOutput(outputId = "plot",width = "1540px", height = "900px"),
+      plotOutput(outputId = "plot",width = "1500px", height = "900px"),
       br(),
       DT::dataTableOutput("table")
       
@@ -99,13 +99,13 @@ server <- function(input, output) {
           hjust="inward"
         ) +
           coord_flip(clip = "off")
-    p + theme_minimal()
+    p + theme_minimal() + theme(legend.position="top")
     
   }, res = 90)
   
   output$table = DT::renderDataTable({
     # df %>% select(!c("ID", "Opponent", "Rk"))
-    df %>% select(c("Player", "Team", "Status", "FP.G", "FPts.90", "Total", "Total.Min.GP", "Min.GP", "G.90", "A.90"))
+    df %>% select(c("Player", "Team", "Status", "FP.G", "FPts.90", "Total.90", "Min.GP", "G.90", "A.90"))
   })
   
 }
