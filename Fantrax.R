@@ -62,8 +62,8 @@ ui <- fluidPage(
       selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
       selectInput("status","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
       selectInput("position","Choose a Position", choices = c("All",unique(df$Position)), selected = "All"),
-      selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "Min.GP"),
-      selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "FP.G"),
+      selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "FPts.90"),
+      selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "GP")
       
     ),
     
