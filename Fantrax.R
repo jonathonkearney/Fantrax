@@ -45,15 +45,18 @@ ui <- fluidPage(
     
     sidebarPanel(
       
+      width = "2",
+      
       selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
       selectInput("status","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
+      selectInput("position","Choose a Position", choices = c("All",unique(df$Position)), selected = "All"),
       selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "A.90"),
       selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "Min.GP"),
       
     ),
     
     mainPanel(
-      plotOutput(outputId = "plot",width = "1000px", height = "700px"),
+      plotOutput(outputId = "plot",width = "1540px", height = "900px"),
       br(),
       DT::dataTableOutput("table")
       
@@ -70,8 +73,11 @@ server <- function(input, output) {
     if (input$status != "All") {
       df <- filter(df, Status == input$status)
     }
+    if (input$position != "All") {
+      df <- filter(df, Position == input$position)
+    }
     
-    ggplot(df, aes(colour = Position)) + aes_string(x = input$xAxis, y = input$yAxis) +
+    p <- ggplot(df, aes(colour = Position)) + aes_string(x = input$xAxis, y = input$yAxis) +
         geom_point() +
         geom_text(
           aes(label = Player),
@@ -81,11 +87,13 @@ server <- function(input, output) {
           hjust="inward"
         ) +
           coord_flip(clip = "off")
+    p + theme_minimal()
+    
   }, res = 90)
   
-  output$table = DT::renderDataTable({
-    df %>% select(!c("ID", "Opponent", "Rk"))
-  })
+  # output$table = DT::renderDataTable({
+  #   df %>% select(!c("ID", "Opponent", "Rk"))
+  # })
   
 }
 shinyApp(ui, server)
