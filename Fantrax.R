@@ -48,6 +48,8 @@ for(i in 1:ncol(df)){
   }
 }
 
+df$PotentialFP <- df$FPts.90 - df$FP.G
+
 ui <- fluidPage(
   
   # App title ----
@@ -62,8 +64,8 @@ ui <- fluidPage(
       selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
       selectInput("status","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
       selectInput("position","Choose a Position", choices = c("All",unique(df$Position)), selected = "All"),
-      selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "FPts.90"),
-      selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "GP")
+      selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "PotentialFP"),
+      selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "Min.GP")
       
     ),
     
@@ -105,7 +107,7 @@ server <- function(input, output) {
   
   output$table = DT::renderDataTable({
     # df %>% select(!c("ID", "Opponent", "Rk"))
-    df %>% select(c("Player", "Team", "Status", "FP.G", "FPts.90", "Total.90", "Min.GP", "G.90", "A.90"))
+    df %>% select(c("Player", "Team", "Status", "FP.G", "FPts.90", "PotentialFP", "Min.GP", "G.90", "A.90"))
   })
   
 }
