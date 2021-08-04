@@ -1,8 +1,10 @@
 library(ggplot2)
 library(tidyverse)
 library(shiny)
+library(shinythemes)
 library(dplyr)
 library(DT)
+library("corrplot")
 
 #set the directory as the R folder and save the two tables as variables
 setwd("C:/Users/Joe/Documents/R")
@@ -52,29 +54,32 @@ df$PotentialFP <- df$FPts.90 - df$FP.G
 
 ui <- fluidPage(
   
-  # App title ----
-  titlePanel("Fantrax"),
+  theme = shinytheme("flatly"),
   
-  sidebarLayout(
-    
-    sidebarPanel(
-      
-      width = "2",
-      
-      selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
-      selectInput("status","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
-      selectInput("position","Choose a Position", choices = c("All",unique(df$Position)), selected = "All"),
-      selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "PotentialFP"),
-      selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "Min.GP")
-      
-    ),
-    
-    mainPanel(
-      plotOutput(outputId = "plot",width = "1500px", height = "900px"),
-      br(),
-      DT::dataTableOutput("table")
-      
-    )
+  navbarPage("Fantrax",
+     tabPanel("Plot",
+        sidebarLayout(
+          
+          sidebarPanel(
+            
+            width = "2",
+            
+            selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
+            selectInput("status","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
+            selectInput("position","Choose a Position", choices = c("All",unique(df$Position)), selected = "All"),
+            selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "PotentialFP"),
+            selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "Min.GP")
+            
+          ),
+          
+          mainPanel(
+            plotOutput(outputId = "plot",width = "1500px", height = "900px")
+          )
+        )
+     ),
+     tabPanel("Table",
+        DT::dataTableOutput("table")
+     )
   )
 )
 
@@ -101,7 +106,7 @@ server <- function(input, output) {
           hjust="inward"
         ) +
           coord_flip(clip = "off")
-    p + theme_minimal() + theme(legend.position="top")
+    p + theme_minimal() 
     
   }, res = 90)
   
