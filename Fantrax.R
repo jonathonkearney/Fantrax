@@ -1,10 +1,7 @@
-library(ggplot2)
 library(tidyverse)
 library(shiny)
 library(shinythemes)
-library(dplyr)
 library(DT)
-library("corrplot")
 
 #set the directory as the R folder and save the two tables as variables
 setwd("C:/Users/Joe/Documents/R")
