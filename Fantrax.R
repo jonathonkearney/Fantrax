@@ -50,7 +50,7 @@ for(i in 1:ncol(df)){
   }
 }
 
-df$PotentialFP <- df$FPts.90 - df$FP.G
+df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 
 ui <- fluidPage(
   
@@ -78,8 +78,23 @@ ui <- fluidPage(
         )
      ),
      tabPanel("Table",
-        DT::dataTableOutput("table")
+      sidebarLayout(
+        
+        sidebarPanel(
+          
+          width = "2",
+          
+          selectInput("tTeam","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
+          selectInput("tStatus","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
+          selectInput("tPosition","Choose a Position", choices = c("All",unique(df$Position)), selected = "All"),
+          
+        ),
+        
+        mainPanel(
+          DT::dataTableOutput("table")
+        )
      )
+    )
   )
 )
 
@@ -106,12 +121,21 @@ server <- function(input, output) {
           hjust="inward"
         ) +
           coord_flip(clip = "off")
-    p + theme_minimal() 
+    p + theme_classic() 
     
   }, res = 90)
   
   output$table = DT::renderDataTable({
-    # df %>% select(!c("ID", "Opponent", "Rk"))
+    
+    if (input$tTeam != "All") {
+      df <- filter(df, Team == input$tTeam)
+    }
+    if (input$tStatus != "All") {
+      df <- filter(df, Status == input$tStatus)
+    }
+    if (input$tPosition != "All") {
+      df <- filter(df, Position == input$tPosition)
+    }
     df %>% select(c("Player", "Team", "Status", "FP.G", "FPts.90", "PotentialFP", "Min.GP", "G.90", "A.90"))
   })
   
