@@ -164,7 +164,7 @@ server <- function(input, output) {
     temp <- select(df, ends_with(".90"))
     
     m = cor(temp)
-    corrplot(m, method = 'number', order = 'alphabet')
+    corrplot(m, method = 'color', order = 'alphabet')
   })
   
 }
