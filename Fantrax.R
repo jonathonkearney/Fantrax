@@ -2,6 +2,7 @@ library(tidyverse)
 library(shiny)
 library(shinythemes)
 library(DT)
+library(corrplot)
 
 #set the directory as the R folder and save the two tables as variables
 setwd("C:/Users/Joe/Documents/R")
@@ -61,11 +62,12 @@ ui <- fluidPage(
             
             width = "2",
             
-            selectInput("team","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
-            selectInput("status","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
-            selectInput("position","Choose a Position", choices = c("All",unique(df$Position)), selected = "All"),
-            selectInput("yAxis","Choose the Y Axis", choices = names(df), selected = "PotentialFP"),
-            selectInput("xAxis","Choose the X Axis", choices = names(df), selected = "Min.GP")
+            selectInput("team","Choose a team", choices = c("All",unique(sort(df$Team))), selected = "All"),
+            selectInput("status","Choose a Status", choices = c("All",unique(sort(df$Status))), selected = "All"),
+            selectInput("position","Choose a Position", choices = c("All",unique(sort(df$Position))), selected = "All"),
+            selectInput("yAxis","Choose the Y Axis", choices = sort(names(df)), selected = "AT.90"),
+            selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "KP.90"),
+            checkboxInput("addLines", "Add Lines", value = TRUE, width = NULL)
             
           ),
           
@@ -91,6 +93,20 @@ ui <- fluidPage(
           DT::dataTableOutput("table")
         )
      )
+    ),
+    tabPanel("Correlations",
+     sidebarLayout(
+       
+       sidebarPanel(
+         
+         width = "2"
+         
+       ),
+       
+       mainPanel(
+         plotOutput(outputId = "corrPlot",width = "1700px", height = "850px")
+       )
+     )
     )
   )
 )
@@ -109,16 +125,21 @@ server <- function(input, output) {
     }
     
     p <- ggplot(df, aes(colour = Position)) + aes_string(input$yAxis, input$xAxis) +
-        geom_point() +
+        geom_point() + 
         geom_text(
           aes(label = Player),
           check_overlap = T,
           adj = -0.1,
-          vjust="inward",
-          hjust="inward"
+          vjust="inward"
         ) +
           coord_flip(clip = "off")
-    p + theme_classic() 
+    
+    if(input$addLines == TRUE) {
+      p + theme_classic() + geom_smooth(method="lm", se=F)
+    }
+    else{
+      p + theme_classic()
+    }
     
   }, res = 90)
   
@@ -134,6 +155,16 @@ server <- function(input, output) {
       df <- filter(df, Position == input$tPosition)
     }
     df %>% select(c("Player", "Team", "Status", "FP.G", "FPts.90", "PotentialFP", "Min.GP", "G.90", "A.90"))
+  })
+  
+  output$corrPlot <- renderPlot({
+    
+    # temp <- cor(df %>% select(c("G.90", "A.90")))
+    
+    temp <- select(df, ends_with(".90"))
+    
+    m = cor(temp)
+    corrplot(m, method = 'number', order = 'alphabet')
   })
   
 }
