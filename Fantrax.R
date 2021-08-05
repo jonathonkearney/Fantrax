@@ -104,7 +104,7 @@ ui <- fluidPage(
        ),
        
        mainPanel(
-         plotOutput(outputId = "corrPlot",width = "1700px", height = "850px")
+         plotOutput(outputId = "corrPlot",width = "1500px", height = "150px")
        )
      )
     )
@@ -154,18 +154,18 @@ server <- function(input, output) {
     if (input$tPosition != "All") {
       df <- filter(df, Position == input$tPosition)
     }
-    df %>% select(c("Player", "Team", "Status", "FP.G", "FPts.90", "PotentialFP", "Min.GP", "G.90", "A.90"))
+    df %>% select(c("Player", "Team", "Status", "FP.G", "FPts.90", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
   output$corrPlot <- renderPlot({
     
-    # temp <- cor(df %>% select(c("G.90", "A.90")))
-    
     temp <- select(df, ends_with(".90"))
     
-    m = cor(temp)
-    corrplot(m, method = 'color', order = 'alphabet')
+    # m = cor(temp)
+    # corrplot(m, method = 'color', order = 'alphabet')
+    
+    m <- cor(x = df$FPts.90, y = temp, use="complete.obs")
+    corrplot(m, method = "number", tl.srt = 25)
   })
-  
 }
 shinyApp(ui, server)
