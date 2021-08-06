@@ -65,8 +65,8 @@ ui <- fluidPage(
             selectInput("team","Choose a team", choices = c("All",unique(sort(df$Team))), selected = "All"),
             selectInput("status","Choose a Status", choices = c("All",unique(sort(df$Status))), selected = "All"),
             selectInput("position","Choose a Position", choices = c("All",unique(sort(df$Position))), selected = "All"),
-            selectInput("yAxis","Choose the Y Axis", choices = sort(names(df)), selected = "AT.90"),
-            selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "KP.90"),
+            selectInput("yAxis","Choose the Y Axis", choices = sort(names(df)), selected = "KP.90"),
+            selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "Min.GP"),
             checkboxInput("addLines", "Add Lines", value = TRUE, width = NULL)
             
           ),
@@ -154,7 +154,7 @@ server <- function(input, output) {
     if (input$tPosition != "All") {
       df <- filter(df, Position == input$tPosition)
     }
-    df %>% select(c("Player", "Team", "Status", "FP.G", "FPts.90", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
+    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
   output$corrPlot <- renderPlot({
