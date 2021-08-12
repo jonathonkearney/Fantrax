@@ -109,31 +109,20 @@ ui <- fluidPage(
        )
      )
     ),
-    tabPanel("Fantrax Teams",
-     sidebarLayout(
-       
-       sidebarPanel(
-         
-         width = "2"
-         
-       ),
-       
-       mainPanel(
-         plotOutput(outputId = "fTeams",width = "1500px", height = "800px")
-       )
-     )
-    ),
     tabPanel("Teams",
      sidebarLayout(
        
        sidebarPanel(
          
-         width = "2"
+         width = "2",
+         
+         selectInput("fTeamY","Choose the Y Axis", choices = sort(names(df)), selected = "FP.G"),
+         selectInput("fTeamX","Choose the X Axis", choices = c("Status", "Team"), selected = "Status")
          
        ),
        
        mainPanel(
-         plotOutput(outputId = "teams",width = "1500px", height = "800px")
+         plotOutput(outputId = "fTeams",width = "1500px", height = "800px")
        )
      )
     )
@@ -199,23 +188,22 @@ server <- function(input, output) {
   
   output$fTeams <- renderPlot({
     
-    # temp2 <- df[df$Status != "W (Fri)"] 
-    temp2 <- subset(df, Status!= "W (Fri)" & Status!= "W (Sat)" & Status!= "W (Sun)" & 
-                      Status!= "W (Mon)" & Status!= "W (Tue)" & Status!= "W (Wed)" &
-                      Status!= "W (Thu)" & Status!= "FA")
-    
-    
-    
-    # ggplot(temp2, aes(x=Status, y=FP.G, fill=Status)) +
-    ggplot(temp2, aes(x = reorder(Status, FP.G, FUN=mean), y=FP.G, fill=Status)) +
-      geom_boxplot(coef = 5) + labs(x = "Teams (by mean, left to right)")
-  })
-  
-  output$teams <- renderPlot({
-    
-    
-    ggplot(df, aes(x=reorder(Team, FPts.90, FUN=median), y=FPts.90, fill=Team)) +
-      geom_boxplot()
+    if(input$fTeamX == "Status"){
+      temp2 <- subset(df, Status!= "W (Fri)" & Status!= "W (Sat)" & Status!= "W (Sun)" & 
+                        Status!= "W (Mon)" & Status!= "W (Tue)" & Status!= "W (Wed)" &
+                        Status!= "W (Thu)" & Status!= "FA")
+      
+      #input$fTeamY is a character, so you have to use get() in aes 
+      ggplot(temp2, aes(x = reorder(Status, get(input$fTeamY), FUN=mean), fill=Status)) + aes_string(y = input$fTeamY) +
+        geom_boxplot(coef = 5) + labs(x = "Teams")
+      
+    }else{
+      temp2 <- df
+      
+      #input$fTeamY is a character, so you have to use get() in aes 
+      ggplot(temp2, aes(x=reorder(Team, get(input$fTeamY), FUN=mean), get(input$fTeamY), fill=Team)) +
+        geom_boxplot(coef = 5) + labs(x = "Teams")
+    }
   })
 }
 shinyApp(ui, server)
