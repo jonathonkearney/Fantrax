@@ -205,7 +205,7 @@ server <- function(input, output) {
                       Status!= "W (Thu)" & Status!= "FA")
     
     ggplot(temp2, aes(x=Status, y=FP.G, fill=Status)) +
-      geom_boxplot()
+      geom_boxplot(coef = 5)
   })
   
   output$teams <- renderPlot({
