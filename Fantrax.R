@@ -204,14 +204,17 @@ server <- function(input, output) {
                       Status!= "W (Mon)" & Status!= "W (Tue)" & Status!= "W (Wed)" &
                       Status!= "W (Thu)" & Status!= "FA")
     
-    ggplot(temp2, aes(x=Status, y=FP.G, fill=Status)) +
+    
+    
+    # ggplot(temp2, aes(x=Status, y=FP.G, fill=Status)) +
+    ggplot(temp2, aes(x = reorder(Status, FP.G, FUN=median), y=FP.G, fill=Status)) +
       geom_boxplot(coef = 5)
   })
   
   output$teams <- renderPlot({
     
     
-    ggplot(df, aes(x=Team, y=FPts.90, fill=Team)) +
+    ggplot(df, aes(x=reorder(Team, FPts.90, FUN=median), y=FPts.90, fill=Team)) +
       geom_boxplot()
   })
 }
