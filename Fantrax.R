@@ -208,7 +208,7 @@ server <- function(input, output) {
     
     # ggplot(temp2, aes(x=Status, y=FP.G, fill=Status)) +
     ggplot(temp2, aes(x = reorder(Status, FP.G, FUN=mean), y=FP.G, fill=Status)) +
-      geom_boxplot(coef = 5)
+      geom_boxplot(coef = 5) + labs(x = "Teams (by mean, left to right)")
   })
   
   output$teams <- renderPlot({
