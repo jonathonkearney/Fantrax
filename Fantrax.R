@@ -27,8 +27,8 @@ df <- subset(df, Min > minMins)
 for(i in 1:ncol(df)){
   x <- colnames(df)[i]
   if(x != "ID" && x != "Player" && x != "Team" && x != "Position"
-     && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G"
-     && x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total"){
+     && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G" && x != "X.D"
+     && x != "ADP"&& x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total"){
     name <- paste(colnames(df)[i], ".90", sep="")
     df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
@@ -49,6 +49,7 @@ for(i in 1:ncol(df)){
 }
 
 df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
+df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
 
 ui <- fluidPage(
   
@@ -65,7 +66,7 @@ ui <- fluidPage(
             selectInput("team","Choose a team", choices = c("All",unique(sort(df$Team))), selected = "All"),
             selectInput("status","Choose a Status", choices = c("All",unique(sort(df$Status))), selected = "All"),
             selectInput("position","Choose a Position", choices = c("All",unique(sort(df$Position))), selected = "All"),
-            selectInput("yAxis","Choose the Y Axis", choices = sort(names(df)), selected = "KP.90"),
+            selectInput("yAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts.90"),
             selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "Min.GP"),
             checkboxInput("addLines", "Add Lines", value = TRUE, width = NULL)
             
@@ -105,6 +106,34 @@ ui <- fluidPage(
        
        mainPanel(
          plotOutput(outputId = "corrPlot",width = "1500px", height = "150px")
+       )
+     )
+    ),
+    tabPanel("Fantrax Teams",
+     sidebarLayout(
+       
+       sidebarPanel(
+         
+         width = "2"
+         
+       ),
+       
+       mainPanel(
+         plotOutput(outputId = "fTeams",width = "1500px", height = "800px")
+       )
+     )
+    ),
+    tabPanel("Teams",
+     sidebarLayout(
+       
+       sidebarPanel(
+         
+         width = "2"
+         
+       ),
+       
+       mainPanel(
+         plotOutput(outputId = "teams",width = "1500px", height = "800px")
        )
      )
     )
@@ -154,7 +183,7 @@ server <- function(input, output) {
     if (input$tPosition != "All") {
       df <- filter(df, Position == input$tPosition)
     }
-    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
+    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "AT.KP", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
   output$corrPlot <- renderPlot({
@@ -166,6 +195,12 @@ server <- function(input, output) {
     
     m <- cor(x = df$FPts.90, y = temp, use="complete.obs")
     corrplot(m, method = "number", tl.srt = 25)
+  })
+  
+  output$teams <- renderPlot({
+    
+    ggplot(df, aes(x=Team, y=FPts.90, fill=Team)) +
+      geom_boxplot()
   })
 }
 shinyApp(ui, server)
