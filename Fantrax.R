@@ -197,7 +197,19 @@ server <- function(input, output) {
     corrplot(m, method = "number", tl.srt = 25)
   })
   
+  output$fTeams <- renderPlot({
+    
+    # temp2 <- df[df$Status != "W (Fri)"] 
+    temp2 <- subset(df, Status!= "W (Fri)" & Status!= "W (Sat)" & Status!= "W (Sun)" & 
+                      Status!= "W (Mon)" & Status!= "W (Tue)" & Status!= "W (Wed)" &
+                      Status!= "W (Thu)" & Status!= "FA")
+    
+    ggplot(temp2, aes(x=Status, y=FP.G, fill=Status)) +
+      geom_boxplot()
+  })
+  
   output$teams <- renderPlot({
+    
     
     ggplot(df, aes(x=Team, y=FPts.90, fill=Team)) +
       geom_boxplot()
