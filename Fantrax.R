@@ -12,7 +12,7 @@ FT <- read.csv("FT.csv", header = TRUE)
 #merge the two tables together
 df <- merge(x = FT, y = FS)
 
-minMins <- 180
+minMins <- 20
 
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
@@ -125,6 +125,23 @@ ui <- fluidPage(
          plotOutput(outputId = "fTeams",width = "1500px", height = "800px")
        )
      )
+    ),
+    tabPanel("Teams-Violin",
+     sidebarLayout(
+       
+       sidebarPanel(
+         
+         width = "2",
+         
+         selectInput("VTeamY","Choose the Y Axis", choices = sort(names(df)), selected = "FP.G"),
+         selectInput("VTeamX","Choose the X Axis", choices = c("Status", "Team"), selected = "Status")
+         
+       ),
+       
+       mainPanel(
+         plotOutput(outputId = "VTeams",width = "1500px", height = "800px")
+       )
+     )
     )
   )
 )
@@ -203,6 +220,25 @@ server <- function(input, output) {
       #input$fTeamY is a character, so you have to use get() in aes 
       ggplot(temp2, aes(x=reorder(Team, get(input$fTeamY), FUN=mean), get(input$fTeamY), fill=Team)) +
         geom_boxplot(coef = 5) + labs(x = "Teams")
+    }
+  })
+  output$VTeams <- renderPlot({
+    
+    if(input$VTeamX == "Status"){
+      temp3 <- subset(df, Status!= "W (Fri)" & Status!= "W (Sat)" & Status!= "W (Sun)" & 
+                        Status!= "W (Mon)" & Status!= "W (Tue)" & Status!= "W (Wed)" &
+                        Status!= "W (Thu)" & Status!= "FA")
+      
+      #input$VTeamY is a character, so you have to use get() in aes 
+      ggplot(temp3, aes(x = reorder(Status, get(input$VTeamY), FUN=mean), fill=Status)) + aes_string(y = input$VTeamY) +
+        geom_violin() + labs(x = "Teams")
+      
+    }else{
+      temp3 <- df
+      
+      #input$VTeamY is a character, so you have to use get() in aes 
+      ggplot(temp3, aes(x=reorder(Team, get(input$VTeamY), FUN=mean), get(input$VTeamY), fill=Team)) +
+        geom_violin() + labs(x = "Teams")
     }
   })
 }
