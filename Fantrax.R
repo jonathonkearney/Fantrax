@@ -28,7 +28,8 @@ for(i in 1:ncol(df)){
   x <- colnames(df)[i]
   if(x != "ID" && x != "Player" && x != "Team" && x != "Position"
      && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G" && x != "X.D"
-     && x != "ADP"&& x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total"){
+     && x != "ADP"&& x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total" 
+     && x != "X..Owned" && x != "X..."){
     name <- paste(colnames(df)[i], ".90", sep="")
     df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
@@ -64,10 +65,10 @@ ui <- fluidPage(
             width = "2",
             
             selectInput("team","Choose a team", choices = c("All",unique(sort(df$Team))), selected = "All"),
-            selectInput("status","Choose a Status", choices = c("All",unique(sort(df$Status))), selected = "All"),
-            selectInput("position","Choose a Position", choices = c("All",unique(sort(df$Position))), selected = "All"),
+            selectInput("status","Choose a Status", choices = c("All", "All Available", unique(sort(df$Status)), "Waiver"), selected = "All"),
+            selectInput("position","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
             selectInput("yAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts.90"),
-            selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "Min.GP"),
+            selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "SFTP.90"),
             checkboxInput("addLines", "Add Lines", value = TRUE, width = NULL)
             
           ),
@@ -85,8 +86,8 @@ ui <- fluidPage(
           width = "2",
           
           selectInput("tTeam","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
-          selectInput("tStatus","Choose a Status", choices = c("All",unique(df$Status)), selected = "All"),
-          selectInput("tPosition","Choose a Position", choices = c("All",unique(df$Position)), selected = "All"),
+          selectInput("tStatus","Choose a Status", choices = c("All", "All Available", unique(df$Status), "Waiver"), selected = "All"),
+          selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
           
         ),
         
@@ -153,10 +154,26 @@ server <- function(input, output) {
       df <- filter(df, Team == input$team)
     }
     if (input$status != "All") {
-      df <- filter(df, Status == input$status)
+      if (input$status == "Waiver") {
+        df <- filter(df, str_detect(Status, "^W \\("))
+      }
+      else if (input$status == "All Available") {
+        df <- filter(df, str_detect(Status, "^W \\(") | str_detect(Status, "^FA"))
+      }
+      else{
+        df <- filter(df, Status == input$status)  
+      }
     }
     if (input$position != "All") {
-      df <- filter(df, Position == input$position)
+      if(input$position == "D"){
+        df <- filter(df, str_detect(Position, "D"))
+      }
+      else if(input$position == "M"){
+        df <- filter(df, str_detect(Position, "M"))
+      }
+      else if(input$position == "F"){
+        df <- filter(df, str_detect(Position, "F"))
+      }
     }
     
     p <- ggplot(df, aes(colour = Position)) + aes_string(input$yAxis, input$xAxis) +
@@ -184,10 +201,26 @@ server <- function(input, output) {
       df <- filter(df, Team == input$tTeam)
     }
     if (input$tStatus != "All") {
-      df <- filter(df, Status == input$tStatus)
+      if (input$tStatus == "Waiver") {
+        df <- filter(df, str_detect(Status, "^W \\("))
+      }
+      else if (input$tStatus == "All Available") {
+        df <- filter(df, str_detect(Status, "^W \\(") | str_detect(Status, "^FA"))
+      }
+      else{
+        df <- filter(df, Status == input$tStatus)  
+      }
     }
     if (input$tPosition != "All") {
-      df <- filter(df, Position == input$tPosition)
+      if(input$tPosition == "D"){
+        df <- filter(df, str_detect(Position, "D"))
+      }
+      else if(input$tPosition == "M"){
+        df <- filter(df, str_detect(Position, "M"))
+      }
+      else if(input$tPosition == "F"){
+        df <- filter(df, str_detect(Position, "F"))
+      }
     }
     df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "AT.KP", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
@@ -199,7 +232,7 @@ server <- function(input, output) {
     # m = cor(temp)
     # corrplot(m, method = 'color', order = 'alphabet')
     
-    m <- cor(x = df$FPts.90, y = temp, use="complete.obs")
+    m <- cor(x = df$FPts.90, y = temp)
     corrplot(m, method = "number", tl.srt = 25)
   })
   
@@ -219,7 +252,7 @@ server <- function(input, output) {
       
       #input$fTeamY is a character, so you have to use get() in aes 
       ggplot(temp2, aes(x=reorder(Team, get(input$fTeamY), FUN=mean), get(input$fTeamY), fill=Team)) +
-        geom_boxplot(coef = 5) + labs(x = "Teams")
+        geom_boxplot(coef = inf) + labs(x = "Teams")
     }
   })
   output$VTeams <- renderPlot({
