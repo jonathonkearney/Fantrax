@@ -69,7 +69,7 @@ ui <- fluidPage(
             selectInput("position","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
             selectInput("yAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts.90"),
             selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "SFTP.90"),
-            checkboxInput("addLines", "Add Lines", value = TRUE, width = NULL)
+            checkboxInput("addLines", "Add Lines", value = FALSE, width = NULL)
             
           ),
           
@@ -252,7 +252,7 @@ server <- function(input, output) {
       
       #input$fTeamY is a character, so you have to use get() in aes 
       ggplot(temp2, aes(x=reorder(Team, get(input$fTeamY), FUN=mean), get(input$fTeamY), fill=Team)) +
-        geom_boxplot(coef = inf) + labs(x = "Teams")
+        geom_boxplot(coef = 5) + labs(x = "Teams")
     }
   })
   output$VTeams <- renderPlot({
@@ -264,7 +264,7 @@ server <- function(input, output) {
       
       #input$VTeamY is a character, so you have to use get() in aes 
       ggplot(temp3, aes(x = reorder(Status, get(input$VTeamY), FUN=mean), fill=Status)) + aes_string(y = input$VTeamY) +
-        geom_violin() + labs(x = "Teams")
+        geom_violin() + labs(x = "Teams") +geom_boxplot(width=.1)
       
     }else{
       temp3 <- df
