@@ -135,7 +135,8 @@ ui <- fluidPage(
          width = "2",
          
          selectInput("VTeamY","Choose the Y Axis", choices = sort(names(df)), selected = "FP.G"),
-         selectInput("VTeamX","Choose the X Axis", choices = c("Status", "Team"), selected = "Status")
+         selectInput("VTeamX","Choose the X Axis", choices = c("Status", "Team"), selected = "Status"),
+         checkboxInput("addPlot", "Add BoxPlot", value = TRUE, width = NULL)
          
        ),
        
@@ -263,16 +264,24 @@ server <- function(input, output) {
                         Status!= "W (Thu)" & Status!= "FA")
       
       #input$VTeamY is a character, so you have to use get() in aes 
-      ggplot(temp3, aes(x = reorder(Status, get(input$VTeamY), FUN=mean), fill=Status)) + aes_string(y = input$VTeamY) +
-        geom_violin() + labs(x = "Teams") +geom_boxplot(width=.1)
+      v <- ggplot(temp3, aes(x = reorder(Status, get(input$VTeamY), FUN=mean), fill=Status)) + aes_string(y = input$VTeamY) +
+        geom_violin() + labs(x = "Teams")
       
-    }else{
+    }
+    else{
       temp3 <- df
       
       #input$VTeamY is a character, so you have to use get() in aes 
-      ggplot(temp3, aes(x=reorder(Team, get(input$VTeamY), FUN=mean), get(input$VTeamY), fill=Team)) +
+      v <- ggplot(temp3, aes(x=reorder(Team, get(input$VTeamY), FUN=mean), get(input$VTeamY), fill=Team)) +
         geom_violin() + labs(x = "Teams")
     }
+    if(input$addPlot == TRUE) {
+      v + geom_boxplot(width=.1)
+    }
+    else{
+      v
+    }
+    
   })
 }
 shinyApp(ui, server)
