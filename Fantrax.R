@@ -61,7 +61,7 @@ for(i in 1:ncol(df)){
 
 df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
-df$xGandXA <- round(df$xG + df$xA, digits = 2)
+df$xGandxA <- round(df$xG + df$xA, digits = 2)
 
 ui <- fluidPage(
   
