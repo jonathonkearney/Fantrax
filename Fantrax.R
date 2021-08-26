@@ -8,7 +8,7 @@ library(FPLOptimiseR)
 # #get understat data
 understat <- fetch_xg_data()
 
-reqd <- as.vector(c("full_name","xG","xA", "XGChain", "XGBuildup"))
+reqd <- as.vector(c("full_name", "xG", "xA", "influence", "creativity", "threat"))
 df_xp <- understat[,reqd]
 
 #set the directory as the R folder and save the two tables as variables
@@ -38,7 +38,8 @@ for(i in 1:ncol(df)){
   if(x != "ID" && x != "Player" && x != "Team" && x != "Position"
      && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G" && x != "X.D"
      && x != "ADP"&& x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total" 
-     && x != "X..Owned" && x != "X..." && x != "xG" && x != "xA"){
+     && x != "X..Owned" && x != "X..." && x != "xG" && x != "xA" && x != "influence"
+     && x != "creativity" && x != "threat"){
     name <- paste(colnames(df)[i], ".90", sep="")
     df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
