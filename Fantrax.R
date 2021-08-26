@@ -3,6 +3,13 @@ library(shiny)
 library(shinythemes)
 library(DT)
 library(corrplot)
+library(FPLOptimiseR)
+# 
+# #get understat data
+understat <- fetch_xg_data()
+
+reqd <- as.vector(c("full_name","xG","xA", "XGChain", "XGBuildup"))
+df_xp <- understat[,reqd]
 
 #set the directory as the R folder and save the two tables as variables
 setwd("C:/Users/Joe/Documents/R")
@@ -11,6 +18,8 @@ FT <- read.csv("FT.csv", header = TRUE)
 
 #merge the two tables together
 df <- merge(x = FT, y = FS)
+
+df <- merge(x = df, y = df_xp, by.x = "Player", by.y = "full_name")
 
 minMins <- 20
 
@@ -29,7 +38,7 @@ for(i in 1:ncol(df)){
   if(x != "ID" && x != "Player" && x != "Team" && x != "Position"
      && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G" && x != "X.D"
      && x != "ADP"&& x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total" 
-     && x != "X..Owned" && x != "X..."){
+     && x != "X..Owned" && x != "X..." && x != "xG" && x != "xA"){
     name <- paste(colnames(df)[i], ".90", sep="")
     df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
@@ -51,6 +60,7 @@ for(i in 1:ncol(df)){
 
 df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
+df$xGandXA <- round(df$xG + df$xA, digits = 2)
 
 ui <- fluidPage(
   
@@ -68,7 +78,7 @@ ui <- fluidPage(
             selectInput("status","Choose a Status", choices = c("All", "All Available", unique(sort(df$Status)), "Waiver"), selected = "All"),
             selectInput("position","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
             selectInput("yAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts.90"),
-            selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "SFTP.90"),
+            selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "Min.GP"),
             checkboxInput("addLines", "Add Lines", value = FALSE, width = NULL)
             
           ),
