@@ -3,13 +3,36 @@ library(shiny)
 library(shinythemes)
 library(DT)
 library(corrplot)
-library(FPLOptimiseR)
-# 
-# #get understat data
-understat <- fetch_xg_data()
+library(rvest)
 
-reqd <- as.vector(c("full_name", "xG", "xA", "influence", "creativity", "threat"))
-df_xp <- understat[,reqd]
+url_data <- "https://en.wikipedia.org/wiki/2021%E2%80%9322_Premier_League"
+css_selector <- "#mw-content-text > div.mw-parser-output > table:nth-child(25)"
+league_table <- url_data %>% 
+  read_html() %>% 
+  html_element(css = css_selector) %>% 
+  html_table()
+
+#abbreviate the Team name column in the league table
+league_table$Team <- sub("Tottenham Hotspur", "TOT", league_table$Team)
+league_table$Team <- sub("West Ham United", "WHU", league_table$Team)
+league_table$Team <- sub("Manchester United", "MUN", league_table$Team)
+league_table$Team <- sub("Chelsea", "CHE", league_table$Team)
+league_table$Team <- sub("Liverpool", "LIV", league_table$Team)
+league_table$Team <- sub("Everton", "EVE", league_table$Team)
+league_table$Team <- sub("Manchester City", "MCI", league_table$Team)
+league_table$Team <- sub("Brighton & Hove Albion", "BHA", league_table$Team)
+league_table$Team <- sub("Leicester City", "LEI", league_table$Team)
+league_table$Team <- sub("Brentford", "BRF", league_table$Team)
+league_table$Team <- sub("Aston Villa", "AVL", league_table$Team)
+league_table$Team <- sub("Watford", "WAT", league_table$Team)
+league_table$Team <- sub("Southampton", "SOU", league_table$Team)
+league_table$Team <- sub("Crystal Palace", "CRY", league_table$Team)
+league_table$Team <- sub("Leeds United", "LEE", league_table$Team)
+league_table$Team <- sub("Burnley", "BUR", league_table$Team)
+league_table$Team <- sub("Newcastle United", "NEW", league_table$Team)
+league_table$Team <- sub("Wolverhampton Wanderers", "WOL", league_table$Team)
+league_table$Team <- sub("Norwich City", "NOR", league_table$Team)
+league_table$Team <- sub("Arsenal", "ARS", league_table$Team)
 
 #set the directory as the R folder and save the two tables as variables
 setwd("C:/Users/Joe/Documents/R")
@@ -19,9 +42,11 @@ FT <- read.csv("FT.csv", header = TRUE)
 #merge the two tables together
 df <- merge(x = FT, y = FS)
 
-df <- merge(x = df, y = df_xp, by.x = "Player", by.y = "full_name")
-
 minMins <- 20
+
+#clean up the opponent column in df
+df$Opponent <- ifelse(startsWith(df$Opponent, "@"), substring(df$Opponent, 2), df$Opponent)
+df$Opponent <- substr(df$Opponent, 1, 3) 
 
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
@@ -39,7 +64,7 @@ for(i in 1:ncol(df)){
      && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G" && x != "X.D"
      && x != "ADP"&& x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total" 
      && x != "X..Owned" && x != "X..." && x != "xG" && x != "xA" && x != "influence"
-     && x != "creativity" && x != "threat"){
+     && x != "creativity" && x != "threat" && x != "X..." && x != "Ros."){
     name <- paste(colnames(df)[i], ".90", sep="")
     df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
@@ -61,7 +86,6 @@ for(i in 1:ncol(df)){
 
 df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
-df$xGandxA <- round(df$xG + df$xA, digits = 2)
 
 ui <- fluidPage(
   
