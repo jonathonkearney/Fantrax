@@ -48,6 +48,22 @@ minMins <- 20
 df$Opponent <- ifelse(startsWith(df$Opponent, "@"), substring(df$Opponent, 2), df$Opponent)
 df$Opponent <- substr(df$Opponent, 1, 3) 
 
+#add in the OppGA and OPPGF and OppRank columns
+df$OppGA <- league_table$GA[match(df$Opponent, league_table$Team)]
+df$OppGA <- as.numeric(as.character(df$OppGA))
+df$OppGF <- league_table$GF[match(df$Opponent, league_table$Team)]
+df$OppGF <- as.numeric(as.character(df$OppGF))
+df$OppGD <- df$OppGF - df$OppGA
+
+#get stats of OppGD 
+OppGD_Max <- max(df[["OppGD"]])
+OppGD_Min <- min(df[["OppGD"]])
+OppGD_Range <- OppGD_Max - OppGD_Min
+
+
+#if OppGD = 0 then FP.G is x1, if OppGD = min then FP.G *2, if OppGD = max then FP.G *0.5
+df$OppGDxFP.G[df$OppGD != 0] <- round(df$FP.G * (0.5 + ((1.5/OppGD_Range) * ((OppGD_Range/2) - df$OppGD))), 2)
+
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
 df$Min <- as.numeric(as.character(df$Min))
@@ -64,7 +80,8 @@ for(i in 1:ncol(df)){
      && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G" && x != "X.D"
      && x != "ADP"&& x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total" 
      && x != "X..Owned" && x != "X..." && x != "xG" && x != "xA" && x != "influence"
-     && x != "creativity" && x != "threat" && x != "X..." && x != "Ros."){
+     && x != "creativity" && x != "threat" && x != "X..." && x != "Ros." && x != "OppGA" 
+     && x != "OppGF" && x != "OppGD"){
     name <- paste(colnames(df)[i], ".90", sep="")
     df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
@@ -258,7 +275,7 @@ server <- function(input, output) {
         df <- filter(df, str_detect(Position, "F"))
       }
     }
-    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "AT.KP", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
+    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "OppGDxFP.G", "OppGD", "AT.KP", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
   output$corrPlot <- renderPlot({
