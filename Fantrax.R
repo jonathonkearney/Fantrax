@@ -54,6 +54,7 @@ df$OppGA <- as.numeric(as.character(df$OppGA))
 df$OppGF <- league_table$GF[match(df$Opponent, league_table$Team)]
 df$OppGF <- as.numeric(as.character(df$OppGF))
 df$OppGD <- df$OppGF - df$OppGA
+df$OppPos <- league_table$Pos[match(df$Opponent, league_table$Team)]
 
 #get stats of OppGD 
 OppGD_Max <- max(df[["OppGD"]])
@@ -61,8 +62,14 @@ OppGD_Min <- min(df[["OppGD"]])
 OppGD_Range <- OppGD_Max - OppGD_Min
 
 
+#TEAMS WITH A NEGATIVE GD SHOULD MAKE FP.G HIGHER, AND POSITIVE SHOULD MAKE FP.G LOWER, BUT IT DOESNT!
+#DOES IT NEED TO BE NEUTRAL AT 0 THOUGH???
 #if OppGD = 0 then FP.G is x1, if OppGD = min then FP.G *2, if OppGD = max then FP.G *0.5
 df$OppGDxFP.G[df$OppGD != 0] <- round(df$FP.G * (0.5 + ((1.5/OppGD_Range) * ((OppGD_Range/2) - df$OppGD))), 2)
+
+#TEAMS WITH A RANK OVER 10 SHOULD MAKE FP.G HIGHER, AND UNDER 10 SHOULD MAKE FP.G LOWER, BUT IT DOESNT!
+#same as above but using league position instead of goal difference
+df$OppPosxFP.G <- df$FP.G * (0.5 + ((1.5/20) * (10 + df$OppPos)))
 
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
@@ -81,7 +88,7 @@ for(i in 1:ncol(df)){
      && x != "ADP"&& x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total" 
      && x != "X..Owned" && x != "X..." && x != "xG" && x != "xA" && x != "influence"
      && x != "creativity" && x != "threat" && x != "X..." && x != "Ros." && x != "OppGA" 
-     && x != "OppGF" && x != "OppGD"){
+     && x != "OppGF" && x != "OppGD" && x != "OppGDxFP.G" && x != "OppPos"){
     name <- paste(colnames(df)[i], ".90", sep="")
     df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
@@ -275,7 +282,7 @@ server <- function(input, output) {
         df <- filter(df, str_detect(Position, "F"))
       }
     }
-    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "OppGDxFP.G", "Opponent", "OppGD", "AT.KP", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
+    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "OppGDxFP.G", "OppPosxFP.G", "Opponent", "OppGD", "OppPos", "AT.KP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
   output$corrPlot <- renderPlot({
