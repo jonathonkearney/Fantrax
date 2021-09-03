@@ -275,7 +275,7 @@ server <- function(input, output) {
         df <- filter(df, str_detect(Position, "F"))
       }
     }
-    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "OppGDxFP.G", "OppGD", "AT.KP", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
+    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "OppGDxFP.G", "Opponent", "OppGD", "AT.KP", "PotentialFP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
   output$corrPlot <- renderPlot({
