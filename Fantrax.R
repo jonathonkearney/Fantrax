@@ -92,9 +92,9 @@ df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
 
 #create scores based off the Team table position differences
-#it's *.75 just to temper it a bit.
-df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * (df$OppPos - df$TeamPos))*.75)), 2)
-df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * (df$OppPos - df$TeamPos))*.75)), 2)
+#I added the *.5 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
+df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * (df$OppPos - df$TeamPos))*.5)), 2)
+df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * (df$OppPos - df$TeamPos))*.5)), 2)
 
 ui <- fluidPage(
   
