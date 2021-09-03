@@ -55,17 +55,12 @@ df$OppGF <- league_table$GF[match(df$Opponent, league_table$Team)]
 df$OppGF <- as.numeric(as.character(df$OppGF))
 df$OppGD <- df$OppGF - df$OppGA
 df$OppPos <- league_table$Pos[match(df$Opponent, league_table$Team)]
+df$TeamPos <- league_table$Pos[match(df$Team, league_table$Team)]
 
 #get stats of OppGD 
 OppGD_Max <- max(df[["OppGD"]])
 OppGD_Min <- min(df[["OppGD"]])
 OppGD_Range <- OppGD_Max - OppGD_Min
-
-
-#THE NEXT STEP IS TO ADD THE PLAYERS TEAMS RANK INTO THE EQUATION
-#make a score that calculates the FP.G with the opponents rank/GD
-df$OppGDxFP.G[df$OppGD != 0] <- round(df$FP.G * (0.2 + ((1.6/OppGD_Range) * ((OppGD_Range/2) - df$OppGD))), 2)
-df$OppPosxFP.G <- df$FP.G * (0.2 + ((1.6/20) * (df$OppPos)))
 
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
@@ -81,10 +76,11 @@ for(i in 1:ncol(df)){
   x <- colnames(df)[i]
   if(x != "ID" && x != "Player" && x != "Team" && x != "Position"
      && x != "Rk" && x != "Status" && x != "Opponent" && x != "FP.G" && x != "X.D"
-     && x != "ADP"&& x != "GP" && x != "PC." && x != "Min" && x != "G.G" && x != "Total" 
+     && x != "ADP"&& x != "GP" && x != "PC." && x != "Min" && x != "G.G"
      && x != "X..Owned" && x != "X..." && x != "xG" && x != "xA" && x != "influence"
      && x != "creativity" && x != "threat" && x != "X..." && x != "Ros." && x != "OppGA" 
-     && x != "OppGF" && x != "OppGD" && x != "OppGDxFP.G" && x != "OppPos"){
+     && x != "OppGF" && x != "OppGD" && x != "OppGDxFP.G" && x != "OppPos"
+     && x != "PosDifxFP.G"){
     name <- paste(colnames(df)[i], ".90", sep="")
     df[,name] <- round((df[,i] / df$Min)*90, digits = 2)
   }
@@ -92,20 +88,13 @@ for(i in 1:ncol(df)){
 
 df$Min.GP <- round((df$Min / df$GP), digits = 2)
 
-#Make a total column that is the sum of all .90 scores (as % of their max scores)
-df$Total.90 <- 0
-for(i in 1:ncol(df)){
-  x <- colnames(df)[i]
-  if(endsWith(x, ".90")){
-    if(x != "RC.90" || x != "YC.90" || x != "DIS.90" || x != "ErG.90" 
-       || x != "OG.90" || x != "Off.90" || x != "FPts.90"){
-      df$Total.90 <- df$Total.90 + (df[,i]/ max(df[,i]))
-    }
-  }
-}
-
 df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
+
+#create scores based off the Team table position differences
+#it's *.75 just to temper it a bit.
+df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * (df$OppPos - df$TeamPos))*.75)), 2)
+df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * (df$OppPos - df$TeamPos))*.75)), 2)
 
 ui <- fluidPage(
   
@@ -278,7 +267,9 @@ server <- function(input, output) {
         df <- filter(df, str_detect(Position, "F"))
       }
     }
-    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "OppGDxFP.G", "OppPosxFP.G", "Opponent", "OppGD", "OppPos", "AT.KP", "Min.GP", "KP.90", "G.90", "A.90"))
+    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90",
+                    "PosDifxFP.G", "PosDifxFPts.90", "Opponent", "OppPos", "TeamPos", 
+                    "AT.KP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
   output$corrPlot <- renderPlot({
