@@ -62,14 +62,10 @@ OppGD_Min <- min(df[["OppGD"]])
 OppGD_Range <- OppGD_Max - OppGD_Min
 
 
-#TEAMS WITH A NEGATIVE GD SHOULD MAKE FP.G HIGHER, AND POSITIVE SHOULD MAKE FP.G LOWER, BUT IT DOESNT!
-#DOES IT NEED TO BE NEUTRAL AT 0 THOUGH???
-#if OppGD = 0 then FP.G is x1, if OppGD = min then FP.G *2, if OppGD = max then FP.G *0.5
-df$OppGDxFP.G[df$OppGD != 0] <- round(df$FP.G * (0.5 + ((1.5/OppGD_Range) * ((OppGD_Range/2) - df$OppGD))), 2)
-
-#TEAMS WITH A RANK OVER 10 SHOULD MAKE FP.G HIGHER, AND UNDER 10 SHOULD MAKE FP.G LOWER, BUT IT DOESNT!
-#same as above but using league position instead of goal difference
-df$OppPosxFP.G <- df$FP.G * (0.5 + ((1.5/20) * (10 + df$OppPos)))
+#THE NEXT STEP IS TO ADD THE PLAYERS TEAMS RANK INTO THE EQUATION
+#make a score that calculates the FP.G with the opponents rank/GD
+df$OppGDxFP.G[df$OppGD != 0] <- round(df$FP.G * (0.2 + ((1.6/OppGD_Range) * ((OppGD_Range/2) - df$OppGD))), 2)
+df$OppPosxFP.G <- df$FP.G * (0.2 + ((1.6/20) * (df$OppPos)))
 
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
