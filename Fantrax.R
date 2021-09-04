@@ -57,11 +57,6 @@ df$OppGD <- df$OppGF - df$OppGA
 df$OppPos <- league_table$Pos[match(df$Opponent, league_table$Team)]
 df$TeamPos <- league_table$Pos[match(df$Team, league_table$Team)]
 
-#get stats of OppGD 
-OppGD_Max <- max(df[["OppGD"]])
-OppGD_Min <- min(df[["OppGD"]])
-OppGD_Range <- OppGD_Max - OppGD_Min
-
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
 df$Min <- as.numeric(as.character(df$Min))
@@ -91,10 +86,17 @@ df$Min.GP <- round((df$Min / df$GP), digits = 2)
 df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
 
-#create scores based off the Team table position differences
+#create scores based off the league table position differences
 #I added the *.5 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
-df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * (df$OppPos - df$TeamPos))*.5)), 2)
-df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * (df$OppPos - df$TeamPos))*.5)), 2)
+df$PosDif <- df$OppPos - df$TeamPos
+df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * df$PosDif)*.5)), 2)
+df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * df$PosDif)*.5)), 2)
+  
+FTeams <- aggregate(df$PosDifxFP.G, by=list(Team=df$Status), FUN=sum)
+FTeams$PosDif <- aggregate(df$PosDif, by=list(Team=df$Status), FUN=sum)
+FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
+FTeams$PosDif = FTeams$PosDif$x
+# ggplot(FTeams, aes(x=Team, y=PosDif)) + geom_bar(stat="identity")
 
 ui <- fluidPage(
   
@@ -188,6 +190,20 @@ ui <- fluidPage(
          plotOutput(outputId = "VTeams",width = "1500px", height = "800px")
        )
      )
+    ),
+    tabPanel("PosDif",
+     sidebarLayout(
+       
+       sidebarPanel(
+         
+         width = "2",
+         
+       ),
+       
+       mainPanel(
+         plotOutput(outputId = "PosDif",width = "1500px", height = "800px")
+       )
+     )
     )
   )
 )
@@ -268,16 +284,13 @@ server <- function(input, output) {
       }
     }
     df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90",
-                    "PosDifxFP.G", "PosDifxFPts.90", "Opponent", "OppPos", "TeamPos", 
+                    "PosDifxFP.G", "PosDifxFPts.90", "PosDif", "Opponent", "OppPos", "TeamPos", 
                     "AT.KP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
   output$corrPlot <- renderPlot({
     
     temp <- select(df, ends_with(".90"))
-    
-    # m = cor(temp)
-    # corrplot(m, method = 'color', order = 'alphabet')
     
     m <- cor(x = df$FPts.90, y = temp)
     corrplot(m, method = "number", tl.srt = 25)
@@ -327,6 +340,11 @@ server <- function(input, output) {
     else{
       v
     }
+    
+  })
+  output$PosDif <- renderPlot({
+    
+    ggplot(FTeams, aes(x=Team, y=PosDif)) + geom_bar(stat="identity")
     
   })
 }
