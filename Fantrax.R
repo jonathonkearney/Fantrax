@@ -87,17 +87,18 @@ df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
 
 #create scores based off the league table position differences
-#I added the *.35 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
+#I added the *.3 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
 df$PosDif <- df$OppPos - df$TeamPos
-df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * df$PosDif)*.35)), 2)
-df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * df$PosDif)*.35)), 2)
+df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * df$PosDif)*.3)), 2)
+df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * df$PosDif)*.3)), 2)
   
 FTeams <- aggregate(df$PosDifxFP.G, by=list(Team=df$Status), FUN=sum)
 FTeams$PosDif <- aggregate(df$PosDif, by=list(Team=df$Status), FUN=sum)
 FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
 
-FTeams$PosDif = FTeams$PosDif$x
+FTeams$PosDif <- FTeams$PosDif$x
 colnames(FTeams)[2] <- "Total_PosDifxFP.G"
+FTeams$Top11Total_PosDifxFP.G <- (FTeams$Total_PosDifxFP.G/14)*11
 
 ui <- fluidPage(
   
@@ -198,7 +199,7 @@ ui <- fluidPage(
        sidebarPanel(
          
          width = "2",
-         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_PosDifxFP.G", "PosDif")), selected = "PosDif")
+         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_PosDifxFP.G", "Top11Total_PosDifxFP.G", "PosDif")), selected = "PosDif")
          
        ),
        
@@ -286,7 +287,7 @@ server <- function(input, output) {
       }
     }
     df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90",
-                    "PosDifxFP.G", "PosDifxFPts.90", "PosDif", "Opponent", "OppPos", "TeamPos", 
+                    "PosDifxFP.G", "PosDifxFPts.90", "PosDif", "Opponent", 
                     "AT.KP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
@@ -348,7 +349,8 @@ server <- function(input, output) {
     
     #input$PosDifY is a character, so you have to use get() in aes 
     ggplot(FTeams, aes(x=reorder(Team, get(input$PosDifY), FUN=mean), get(input$PosDifY), fill=Team)) +
-      geom_bar(stat="identity") + labs(x = "Teams", y = "Sum", title = input$PosDifY)
+      geom_bar(stat="identity") + labs(x = "Teams", y = "Sum", title = input$PosDifY) +
+      geom_text(aes(label = round(get(input$PosDifY),2)), position=position_dodge(width=0.9), vjust=-0.25)
     
   })
 }
