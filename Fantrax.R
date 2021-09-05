@@ -98,7 +98,7 @@ FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
 
 FTeams$PosDif <- FTeams$PosDif$x
 colnames(FTeams)[2] <- "Total_PosDifxFP.G"
-FTeams$Top11Total_PosDifxFP.G <- (FTeams$Total_PosDifxFP.G/14)*11
+FTeams$AdjTotal_PosDifxFP.G <- FTeams$Total_PosDifxFP.G*.8 #.8 is just a guess of what percentage of points start
 
 ui <- fluidPage(
   
@@ -199,7 +199,7 @@ ui <- fluidPage(
        sidebarPanel(
          
          width = "2",
-         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_PosDifxFP.G", "Top11Total_PosDifxFP.G", "PosDif")), selected = "PosDif")
+         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_PosDifxFP.G", "AdjTotal_PosDifxFP.G", "PosDif")), selected = "PosDif")
          
        ),
        
