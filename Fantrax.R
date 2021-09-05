@@ -87,16 +87,17 @@ df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
 
 #create scores based off the league table position differences
-#I added the *.5 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
+#I added the *.35 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
 df$PosDif <- df$OppPos - df$TeamPos
-df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * df$PosDif)*.5)), 2)
-df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * df$PosDif)*.5)), 2)
+df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * df$PosDif)*.35)), 2)
+df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * df$PosDif)*.35)), 2)
   
 FTeams <- aggregate(df$PosDifxFP.G, by=list(Team=df$Status), FUN=sum)
 FTeams$PosDif <- aggregate(df$PosDif, by=list(Team=df$Status), FUN=sum)
 FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
+
 FTeams$PosDif = FTeams$PosDif$x
-# ggplot(FTeams, aes(x=Team, y=PosDif)) + geom_bar(stat="identity")
+colnames(FTeams)[2] <- "Total_PosDifxFP.G"
 
 ui <- fluidPage(
   
@@ -197,6 +198,7 @@ ui <- fluidPage(
        sidebarPanel(
          
          width = "2",
+         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_PosDifxFP.G", "PosDif")), selected = "PosDif")
          
        ),
        
@@ -344,8 +346,11 @@ server <- function(input, output) {
   })
   output$PosDif <- renderPlot({
     
-    ggplot(FTeams, aes(x=Team, y=PosDif)) + geom_bar(stat="identity")
+    #input$PosDifY is a character, so you have to use get() in aes 
+    ggplot(FTeams, aes(x=reorder(Team, get(input$PosDifY), FUN=mean), get(input$PosDifY), fill=Team)) +
+      geom_bar(stat="identity") + labs(x = "Teams", y = "Sum", title = input$PosDifY)
     
   })
 }
 shinyApp(ui, server)
+
