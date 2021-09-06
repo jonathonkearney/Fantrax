@@ -98,7 +98,20 @@ FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
 
 FTeams$PosDif <- FTeams$PosDif$x
 colnames(FTeams)[2] <- "Total_PosDifxFP.G"
-FTeams$AdjTotal_PosDifxFP.G <- FTeams$Total_PosDifxFP.G*.8 #.8 is just a guess of what percentage of points start
+
+# automatically make a list of all the fantrax teams as columns, and each entry will be a decreasing list of PosDifxFP.G
+
+Pred <-  df %>%
+  group_by(Status) %>%
+  arrange(PosDifxFP.G, .by_group = TRUE) %>%
+  top_n(10)
+Pred <- Pred[!startsWith(Pred$Status, "W (") & Pred$Status != "FA",]
+Pred <- select(Pred, Player, Status, PosDifxFP.G)
+
+FTeams$Top10 <- aggregate(PosDifxFP.G ~ Status, data = Pred, sum)
+FTeams$Top10_Total <- FTeams$Top10$PosDifxFP.G
+FTeams <- FTeams[, -4]
+FTeams <- FTeams[, -5]
 
 ui <- fluidPage(
   
@@ -199,7 +212,7 @@ ui <- fluidPage(
        sidebarPanel(
          
          width = "2",
-         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_PosDifxFP.G", "AdjTotal_PosDifxFP.G", "PosDif")), selected = "PosDif")
+         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_PosDifxFP.G", "Top10_Total", "PosDif")), selected = "PosDif")
          
        ),
        
