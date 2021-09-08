@@ -88,10 +88,16 @@ df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
 
 #create scores based off the league table position differences
 #I added the *.3 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
+#Consider perhaps making it so that you slightly exponentially do better the bigger the difference in rank
+#(cont) so a difference of 2 or 3 doesnt do much but a difference of 19 does heaps. 
 df$PosDif <- df$OppPos - df$TeamPos
 df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * df$PosDif)*.3)), 2)
 df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * df$PosDif)*.3)), 2)
-  
+
+#add in the percetage games played variable
+gameweeks <-max(df$GP)
+df$GPxPosDifxFP.G <- round(df$PosDifxFP.G *(df$GP / gameweeks), 2)
+
 FTeams <- aggregate(df$PosDifxFP.G, by=list(Team=df$Status), FUN=sum)
 FTeams$PosDif <- aggregate(df$PosDif, by=list(Team=df$Status), FUN=sum)
 FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
@@ -110,7 +116,7 @@ Pred <- select(Pred, Player, Status, PosDifxFP.G)
 
 FTeams$Top10 <- aggregate(PosDifxFP.G ~ Status, data = Pred, sum)
 FTeams$Top10_Total <- FTeams$Top10$PosDifxFP.G
-FTeams <- FTeams[, -4]
+FTeams <- FTeams[, -4] #does the order here mess this up?
 FTeams <- FTeams[, -5]
 
 ui <- fluidPage(
