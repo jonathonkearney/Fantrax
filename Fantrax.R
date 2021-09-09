@@ -56,6 +56,12 @@ df$OppGF <- as.numeric(as.character(df$OppGF))
 df$OppGD <- df$OppGF - df$OppGA
 df$OppPos <- league_table$Pos[match(df$Opponent, league_table$Team)]
 df$TeamPos <- league_table$Pos[match(df$Team, league_table$Team)]
+MaxOppGF <- max(df$OppGF)
+MaxOppGA <- max(df$OppGA)
+MaxOppGD <- max(df$OppGD)
+AvgOppGF <- mean(df$OppGF)
+AvgOppGA <- mean(df$OppGA)
+AvgOppGD <- mean(df$OppGD)
 
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
@@ -87,37 +93,56 @@ df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
 
 #create scores based off the league table position differences
-#I added the *.3 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
 #Consider perhaps making it so that you slightly exponentially do better the bigger the difference in rank
 #(cont) so a difference of 2 or 3 doesnt do much but a difference of 19 does heaps. 
+AdjFactor <- 0.3 #I added the *.3 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
+
 df$PosDif <- df$OppPos - df$TeamPos
-df$PosDifxFP.G <- round(df$FP.G *  (1 + (((1/19) * df$PosDif)*.3)), 2)
-df$PosDifxFPts.90 <- round(df$FPts.90 *  (1 + (((1/19) * df$PosDif)*.3)), 2)
+df$PosAdjFP.G <- round(df$FP.G * (1 + (((1/19) * df$PosDif)*AdjFactor)), 2)
+df$PosAdjFP.90 <- round(df$FPts.90 * (1 + (((1/19) * df$PosDif)*AdjFactor)), 2)
+
+######
+#Another option is to use the opponents GF and GA. So if it is a forward then you use GA, if 
+#it is a defender then use GF, if its a midfielder then use GD? 
+######
+
+#There is a chance you could div/0 here if the max scores are 0
+#because the AVG isnt exactly half of the max, the scores may change slightly more than 30% on one side
+df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/(MaxOppGA - AvgOppGA)) * (df$OppGA - AvgOppGA) )*AdjFactor)), 2), 
+                     ifelse(grepl("D", df$Position), round(df$FP.G * (1 + (((1/(MaxOppGF - AvgOppGF) ) * (AvgOppGF - df$OppGF) )*AdjFactor)), 2), 
+                            round(df$FP.G * (1 + (((1/MaxOppGD) * (0 - df$OppGD) )*AdjFactor)), 2)
+                              ))
 
 #add in the percetage games played variable
 gameweeks <-max(df$GP)
-df$GPxPosDifxFP.G <- round(df$PosDifxFP.G *(df$GP / gameweeks), 2)
+df$GPxPosAdjFP.G<- round(df$PosAdjFP.G *(df$GP / gameweeks), 2)
 
-FTeams <- aggregate(df$PosDifxFP.G, by=list(Team=df$Status), FUN=sum)
+FTeams <- aggregate(df$PosAdjFP.G, by=list(Team=df$Status), FUN=sum)
 FTeams$PosDif <- aggregate(df$PosDif, by=list(Team=df$Status), FUN=sum)
+FTeams$GDAdjFP.G_Total <- aggregate(df$GDAdjFP.G, by=list(Team=df$Status), FUN=sum)
+
 FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
 
+FTeams$Total_GDAdjFP.G <- FTeams$GDAdjFP.G_Total$x
+FTeams <- FTeams[, -4] #does the order here mess this up?
+FTeams <- FTeams[, -5]
+
 FTeams$PosDif <- FTeams$PosDif$x
-colnames(FTeams)[2] <- "Total_PosDifxFP.G"
+colnames(FTeams)[2] <- "Total_PosAdjFP.G"
 
 # automatically make a list of all the fantrax teams as columns, and each entry will be a decreasing list of PosDifxFP.G
 
 Pred <-  df %>%
   group_by(Status) %>%
-  arrange(PosDifxFP.G, .by_group = TRUE) %>%
+  arrange(PosAdjFP.G, .by_group = TRUE) %>%
   top_n(10)
 Pred <- Pred[!startsWith(Pred$Status, "W (") & Pred$Status != "FA",]
-Pred <- select(Pred, Player, Status, PosDifxFP.G)
+Pred <- select(Pred, Player, Status, PosAdjFP.G)
 
-FTeams$Top10 <- aggregate(PosDifxFP.G ~ Status, data = Pred, sum)
-FTeams$Top10_Total <- FTeams$Top10$PosDifxFP.G
-FTeams <- FTeams[, -4] #does the order here mess this up?
-FTeams <- FTeams[, -5]
+FTeams$Top10 <- aggregate(PosAdjFP.G ~ Status, data = Pred, sum)
+FTeams$Top10_Total_PosAdjFP.G <- FTeams$Top10$PosAdjFP.G
+FTeams <- FTeams[, -5] #does the order here mess this up?
+FTeams <- FTeams[, -6]
 
 ui <- fluidPage(
   
@@ -218,7 +243,7 @@ ui <- fluidPage(
        sidebarPanel(
          
          width = "2",
-         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_PosDifxFP.G", "Top10_Total", "PosDif")), selected = "PosDif")
+         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_GDAdjFP.G", "Total_PosDifxFP.G", "Top10_Total_PosAdjFP.G", "PosDif")), selected = "PosDif")
          
        ),
        
@@ -305,8 +330,8 @@ server <- function(input, output) {
         df <- filter(df, str_detect(Position, "F"))
       }
     }
-    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90",
-                    "PosDifxFP.G", "PosDifxFPts.90", "PosDif", "Opponent", 
+    df %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "GDAdjFP.G",
+                    "PosAdjFP.G", "PosAdjFP.90", "PosDif", "Opponent", "OppGD", "OppGF", "OppGA",  
                     "AT.KP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
