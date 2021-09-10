@@ -92,17 +92,15 @@ df$Min.GP <- round((df$Min / df$GP), digits = 2)
 df$PotentialFP <- round(df$FPts.90 - df$FP.G, digits = 2)
 df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
 
-#create scores based off the league table position differences
-#Consider perhaps making it so that you slightly exponentially do better the bigger the difference in rank
-#(cont) so a difference of 2 or 3 doesnt do much but a difference of 19 does heaps. 
+#create adjusted scores based off the league table position differences
 AdjFactor <- 0.3 #I added the *.3 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
 
 df$PosDif <- df$OppPos - df$TeamPos
 df$PosAdjFP.G <- round(df$FP.G * (1 + (((1/19) * df$PosDif)*AdjFactor)), 2)
 df$PosAdjFP.90 <- round(df$FPts.90 * (1 + (((1/19) * df$PosDif)*AdjFactor)), 2)
 
-#use the opponents GF and GA. So if it is a forward then you use GA, if it is a defender then use GF, if its a midfielder then use GD? 
-#There is a chance you could div/0 here if the max scores are 0
+#create adjusted scores by calculating position against OppGA, OppGF, OppGA
+#There is a chance you could div/0 here. Not sure what happens then TBH
 #because the AVG isnt exactly half of the max, the scores may change slightly more than 30% on one side
 df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/(MaxOppGA - AvgOppGA)) * (df$OppGA - AvgOppGA) )*AdjFactor)), 2), 
                      ifelse(grepl("D", df$Position), round(df$FP.G * (1 + (((1/(MaxOppGF - AvgOppGF) ) * (AvgOppGF - df$OppGF) )*AdjFactor)), 2), 
@@ -113,11 +111,17 @@ df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/(MaxOp
 gameweeks <-max(df$GP)
 df$GPxPosAdjFP.G<- round(df$PosAdjFP.G *(df$GP / gameweeks), 2)
 
-Pred <-  df %>%
+PosPred <-  df %>%
   group_by(Status) %>%
   arrange(PosAdjFP.G, .by_group = TRUE) %>%
   top_n(10)
-Pred <- select(Pred, Player, Status, PosAdjFP.G)
+PosPred <- select(PosPred, Player, Status, PosAdjFP.G)
+
+GDPred <-  df %>%
+  group_by(Status) %>%
+  arrange(GDAdjFP.G, .by_group = TRUE) %>%
+  top_n(10)
+GDPred <- select(GDPred, Player, Status, GDAdjFP.G)
 
 AggTemp1 <- aggregate(df$PosAdjFP.G, by=list(Team=df$Status), FUN=sum)
 colnames(AggTemp1)[2] <- "Total_PosAdjFP.G"
@@ -125,11 +129,15 @@ AggTemp2 <- aggregate(df$PosDif, by=list(Team=df$Status), FUN=sum)
 colnames(AggTemp2)[2] <- "Total_PosDif"
 AggTemp3 <- aggregate(df$GDAdjFP.G, by=list(Team=df$Status), FUN=sum)
 colnames(AggTemp3)[2] <- "Total_GDAdjFP.G"
-AggTemp4 <- aggregate(Pred$PosAdjFP.G, by=list(Team=Pred$Status), FUN=sum)
+
+AggTemp4 <- aggregate(PosPred$PosAdjFP.G, by=list(Team=PosPred$Status), FUN=sum)
 colnames(AggTemp4)[2] <- "Top10_Total_PosAdjFP.G"
+AggTemp5 <- aggregate(GDPred$GDAdjFP.G, by=list(Team=GDPred$Status), FUN=sum)
+colnames(AggTemp5)[2] <- "Top10_Total_GDAdjFP.G"
 
 temp <- merge(AggTemp1, AggTemp2, by="Team")
-temp2 <- merge(AggTemp3, AggTemp4, by="Team")
+temp <- merge(temp, AggTemp3, by="Team")
+temp2 <- merge(AggTemp4, AggTemp5, by="Team")
 FTeams <- merge(temp, temp2, by="Team")
 
 FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
@@ -233,7 +241,7 @@ ui <- fluidPage(
        sidebarPanel(
          
          width = "2",
-         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_GDAdjFP.G", "Total_PosAdjFP.G", "Top10_Total_PosAdjFP.G", "Total_PosDif")), selected = "Total_PosDif")
+         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Top10_Total_GDAdjFP.G", "Total_GDAdjFP.G", "Total_PosAdjFP.G", "Top10_Total_PosAdjFP.G", "Total_PosDif")), selected = "Total_PosDif")
          
        ),
        
