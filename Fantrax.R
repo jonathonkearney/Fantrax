@@ -101,11 +101,7 @@ df$PosDif <- df$OppPos - df$TeamPos
 df$PosAdjFP.G <- round(df$FP.G * (1 + (((1/19) * df$PosDif)*AdjFactor)), 2)
 df$PosAdjFP.90 <- round(df$FPts.90 * (1 + (((1/19) * df$PosDif)*AdjFactor)), 2)
 
-######
-#Another option is to use the opponents GF and GA. So if it is a forward then you use GA, if 
-#it is a defender then use GF, if its a midfielder then use GD? 
-######
-
+#use the opponents GF and GA. So if it is a forward then you use GA, if it is a defender then use GF, if its a midfielder then use GD? 
 #There is a chance you could div/0 here if the max scores are 0
 #because the AVG isnt exactly half of the max, the scores may change slightly more than 30% on one side
 df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/(MaxOppGA - AvgOppGA)) * (df$OppGA - AvgOppGA) )*AdjFactor)), 2), 
@@ -117,32 +113,26 @@ df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/(MaxOp
 gameweeks <-max(df$GP)
 df$GPxPosAdjFP.G<- round(df$PosAdjFP.G *(df$GP / gameweeks), 2)
 
-FTeams <- aggregate(df$PosAdjFP.G, by=list(Team=df$Status), FUN=sum)
-FTeams$PosDif <- aggregate(df$PosDif, by=list(Team=df$Status), FUN=sum)
-FTeams$GDAdjFP.G_Total <- aggregate(df$GDAdjFP.G, by=list(Team=df$Status), FUN=sum)
-
-FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
-
-FTeams$Total_GDAdjFP.G <- FTeams$GDAdjFP.G_Total$x
-FTeams <- FTeams[, -4] #does the order here mess this up?
-FTeams <- FTeams[, -5]
-
-FTeams$PosDif <- FTeams$PosDif$x
-colnames(FTeams)[2] <- "Total_PosAdjFP.G"
-
-# automatically make a list of all the fantrax teams as columns, and each entry will be a decreasing list of PosDifxFP.G
-
 Pred <-  df %>%
   group_by(Status) %>%
   arrange(PosAdjFP.G, .by_group = TRUE) %>%
   top_n(10)
-Pred <- Pred[!startsWith(Pred$Status, "W (") & Pred$Status != "FA",]
 Pred <- select(Pred, Player, Status, PosAdjFP.G)
 
-FTeams$Top10 <- aggregate(PosAdjFP.G ~ Status, data = Pred, sum)
-FTeams$Top10_Total_PosAdjFP.G <- FTeams$Top10$PosAdjFP.G
-FTeams <- FTeams[, -5] #does the order here mess this up?
-FTeams <- FTeams[, -6]
+AggTemp1 <- aggregate(df$PosAdjFP.G, by=list(Team=df$Status), FUN=sum)
+colnames(AggTemp1)[2] <- "Total_PosAdjFP.G"
+AggTemp2 <- aggregate(df$PosDif, by=list(Team=df$Status), FUN=sum)
+colnames(AggTemp2)[2] <- "Total_PosDif"
+AggTemp3 <- aggregate(df$GDAdjFP.G, by=list(Team=df$Status), FUN=sum)
+colnames(AggTemp3)[2] <- "Total_GDAdjFP.G"
+AggTemp4 <- aggregate(Pred$PosAdjFP.G, by=list(Team=Pred$Status), FUN=sum)
+colnames(AggTemp4)[2] <- "Top10_Total_PosAdjFP.G"
+
+temp <- merge(AggTemp1, AggTemp2, by="Team")
+temp2 <- merge(AggTemp3, AggTemp4, by="Team")
+FTeams <- merge(temp, temp2, by="Team")
+
+FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
 
 ui <- fluidPage(
   
@@ -243,7 +233,7 @@ ui <- fluidPage(
        sidebarPanel(
          
          width = "2",
-         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_GDAdjFP.G", "Total_PosDifxFP.G", "Top10_Total_PosAdjFP.G", "PosDif")), selected = "PosDif")
+         selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_GDAdjFP.G", "Total_PosAdjFP.G", "Top10_Total_PosAdjFP.G", "Total_PosDif")), selected = "Total_PosDif")
          
        ),
        
