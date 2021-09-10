@@ -59,9 +59,15 @@ df$TeamPos <- league_table$Pos[match(df$Team, league_table$Team)]
 MaxOppGF <- max(df$OppGF)
 MaxOppGA <- max(df$OppGA)
 MaxOppGD <- max(df$OppGD)
+MinOppGF <- min(df$OppGF)
+MinOppGA <- min(df$OppGA)
+MinOppGD <- min(df$OppGD)
 AvgOppGF <- mean(df$OppGF)
 AvgOppGA <- mean(df$OppGA)
 AvgOppGD <- mean(df$OppGD)
+RangeOppGA <- MaxOppGA - MinOppGA
+RangeOppGF <- MaxOppGF - MinOppGF
+RangeOppGD <-MaxOppGD - MinOppGD
 
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
@@ -100,16 +106,14 @@ df$PosAdjFP.G <- round(df$FP.G * (1 + (((1/19) * df$PosDif)*AdjFactor)), 2)
 df$PosAdjFP.90 <- round(df$FPts.90 * (1 + (((1/19) * df$PosDif)*AdjFactor)), 2)
 
 #create adjusted scores by calculating position against OppGA, OppGF, OppGA
-#There is a chance you could div/0 here. Not sure what happens then TBH
-#because the AVG isnt exactly half of the max, the scores may change slightly more than 30% on one side
-df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/(MaxOppGA - AvgOppGA)) * (df$OppGA - AvgOppGA) )*AdjFactor)), 2), 
-                     ifelse(grepl("D", df$Position), round(df$FP.G * (1 + (((1/(MaxOppGF - AvgOppGF) ) * (AvgOppGF - df$OppGF) )*AdjFactor)), 2), 
-                            round(df$FP.G * (1 + (((1/MaxOppGD) * (0 - df$OppGD) )*AdjFactor)), 2)
+df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/ (RangeOppGA/2) ) * (df$OppGA - (RangeOppGA/2)) )*AdjFactor)), 2), 
+                     ifelse(grepl("D", df$Position), round(df$FP.G * (1 + (((1/ (RangeOppGF/2) ) * ((RangeOppGF/2) - df$OppGF) )*AdjFactor)), 2), 
+                            round(df$FP.G * (1 + (((1/ (RangeOppGD/2) ) * (0 - df$OppGD) )*AdjFactor)), 2)
                               ))
 
 #add in the percetage games played variable
-gameweeks <-max(df$GP)
-df$GPxPosAdjFP.G<- round(df$PosAdjFP.G *(df$GP / gameweeks), 2)
+# gameweeks <-max(df$GP)
+# df$GPxPosAdjFP.G<- round(df$PosAdjFP.G *(df$GP / gameweeks), 2)
 
 PosPred <-  df %>%
   group_by(Status) %>%
@@ -158,7 +162,7 @@ ui <- fluidPage(
             selectInput("status","Choose a Status", choices = c("All", "All Available", unique(sort(df$Status)), "Waiver"), selected = "All"),
             selectInput("position","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
             selectInput("yAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts.90"),
-            selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "Min.GP"),
+            selectInput("xAxis","Choose the X Axis", choices = sort(names(df)), selected = "SFTP.90"),
             checkboxInput("addLines", "Add Lines", value = FALSE, width = NULL)
             
           ),
