@@ -115,19 +115,8 @@ df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/ (Rang
 # gameweeks <-max(df$GP)
 # df$GPxPosAdjFP.G<- round(df$PosAdjFP.G *(df$GP / gameweeks), 2)
 
-GDPred <- select(df, Status, Player, Position, "GDAdjFP.G")
-GDPred <- GDPred[FALSE,]
-TheTeams <- unique(df[["Status"]])
-for (i in 1:length(TheTeams)) {
-  GDPred <- rbind(GDPred, Top10(df, TheTeams[i], "GDAdjFP.G"))
-}
-
-PosPred <- select(df, Status, Player, Position, "PosAdjFP.G")
-PosPred <- PosPred[FALSE,]
-TheTeams <- unique(df[["Status"]])
-for (i in 1:length(TheTeams)) {
-  PosPred <- rbind(PosPred, Top10(df, TheTeams[i], "PosAdjFP.G"))
-}
+PosPred <- Top10(df, "PosAdjFP.G")
+GDPred <- Top10(df, "GDAdjFP.G")
 
 AggTemp1 <- aggregate(df$PosAdjFP.G, by=list(Team=df$Status), FUN=sum)
 colnames(AggTemp1)[2] <- "Total_PosAdjFP.G"
@@ -148,37 +137,43 @@ FTeams <- merge(temp, temp2, by="Team")
 
 FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
 
-Top10 <- function(Data, Team, Metric) {
-  MaxD <- 5
-  MaxM <- 5
-  MaxF <- 3
-  DCount <- 0
-  MCount <- 0
-  FCount <- 0
-  
-  Players <- filter(Data, Data$Status == {{Team}}) #Needs 2x Curly for some reason
-  Players <- select(Players, Status, Player, Position, Metric)
-  Players <- arrange(Players, desc(Players[,Metric]))
-  
-  The10 <- Players[FALSE,] #makes an empty DF with the columns we want
-  
-  for (i in 1:nrow(Players)) {
-    if((DCount + MCount + FCount) < 10){
-      if(grepl("F", Players[i, 3]) & FCount < MaxF){
-        The10 <- rbind(The10, Players[i,])
-        FCount <- FCount + 1
-      }
-      else if(grepl("D", Players[i, 3]) & DCount < MaxD){
-        The10 <- rbind(The10, Players[i,])
-        DCount <- DCount + 1
-      }
-      else if(grepl("M", Players[i, 3]) & MCount < MaxM){
-        The10 <- rbind(The10, Players[i,])
-        MCount <- MCount + 1
+Top10 <- function(Data, Metric) {
+  Pred <- select(df, Status, Player, Position, Metric)
+  Pred <- GDPred[FALSE,]
+  TheTeams <- unique(df[["Status"]])
+  for (i in 1:length(TheTeams)) {
+    MaxD <- 5
+    MaxM <- 5
+    MaxF <- 3
+    DCount <- 0
+    MCount <- 0
+    FCount <- 0
+    
+    Players <- filter(Data, Data$Status == TheTeams[i]) 
+    Players <- select(Players, Status, Player, Position, Metric)
+    Players <- arrange(Players, desc(Players[,Metric]))
+    
+    The10 <- Players[FALSE,] #makes an empty DF with the columns we want
+    
+    for (j in 1:nrow(Players)) {
+      if((DCount + MCount + FCount) < 10){
+        if(grepl("F", Players[j, 3]) & FCount < MaxF){
+          The10 <- rbind(The10, Players[j,])
+          FCount <- FCount + 1
+        }
+        else if(grepl("D", Players[j, 3]) & DCount < MaxD){
+          The10 <- rbind(The10, Players[j,])
+          DCount <- DCount + 1
+        }
+        else if(grepl("M", Players[j, 3]) & MCount < MaxM){
+          The10 <- rbind(The10, Players[j,])
+          MCount <- MCount + 1
+        }
       }
     }
+    Pred <- rbind(Pred, The10)
   }
-  return(The10)
+  return(Pred)
 }
 
 ui <- fluidPage(
