@@ -115,17 +115,19 @@ df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/ (Rang
 # gameweeks <-max(df$GP)
 # df$GPxPosAdjFP.G<- round(df$PosAdjFP.G *(df$GP / gameweeks), 2)
 
-PosPred <-  df %>%
-  group_by(Status) %>%
-  arrange(PosAdjFP.G, .by_group = TRUE) %>%
-  top_n(10)
-PosPred <- select(PosPred, Player, Status, PosAdjFP.G)
+GDPred <- select(df, Status, Player, Position, "GDAdjFP.G")
+GDPred <- GDPred[FALSE,]
+TheTeams <- unique(df[["Status"]])
+for (i in 1:length(TheTeams)) {
+  GDPred <- rbind(GDPred, Top10(df, TheTeams[i], "GDAdjFP.G"))
+}
 
-GDPred <-  df %>%
-  group_by(Status) %>%
-  arrange(GDAdjFP.G, .by_group = TRUE) %>%
-  top_n(10)
-GDPred <- select(GDPred, Player, Status, GDAdjFP.G)
+PosPred <- select(df, Status, Player, Position, "PosAdjFP.G")
+PosPred <- PosPred[FALSE,]
+TheTeams <- unique(df[["Status"]])
+for (i in 1:length(TheTeams)) {
+  PosPred <- rbind(PosPred, Top10(df, TheTeams[i], "PosAdjFP.G"))
+}
 
 AggTemp1 <- aggregate(df$PosAdjFP.G, by=list(Team=df$Status), FUN=sum)
 colnames(AggTemp1)[2] <- "Total_PosAdjFP.G"
@@ -165,27 +167,19 @@ Top10 <- function(Data, Team, Metric) {
       if(grepl("F", Players[i, 3]) & FCount < MaxF){
         The10 <- rbind(The10, Players[i,])
         FCount <- FCount + 1
-        print("FCount is now: ")
-        print(FCount)
       }
       else if(grepl("D", Players[i, 3]) & DCount < MaxD){
         The10 <- rbind(The10, Players[i,])
         DCount <- DCount + 1
-        print("DCount is now: ")
-        print(DCount)
       }
       else if(grepl("M", Players[i, 3]) & MCount < MaxM){
         The10 <- rbind(The10, Players[i,])
         MCount <- MCount + 1
-        print("MCount is now: ")
-        print(MCount)
       }
     }
   }
   return(The10)
 }
-
-Top10(df, "FA", "PosAdjFP.G")
 
 ui <- fluidPage(
   
