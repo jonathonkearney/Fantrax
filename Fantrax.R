@@ -147,40 +147,45 @@ FTeams <- merge(temp, temp2, by="Team")
 FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
 
 Top10 <- function(Data, Team, Metric) {
-  TheTop10 <- c()
   MaxD <- 5
   MaxM <- 5
   MaxF <- 3
   DCount <- 0
   MCount <- 0
   FCount <- 0
-  Total <- 0
   
   Players <- filter(Data, Data$Status == {{Team}}) #Needs 2x Curly for some reason
   Players <- select(Players, Status, Player, Position, Metric)
   Players <- arrange(Players, desc(Players[,Metric]))
   
-  for (row in 1:nrow(Players)) {
-    if(Total < 11){
-      if(grepl("F", Players[i,Position])){
-        
+  The10 <- Players[FALSE,] #makes an empty DF with the columns we want
+  
+  for (i in 1:nrow(Players)) {
+    if((DCount + MCount + FCount) < 10){
+      if(grepl("F", Players[i, 3]) & FCount < MaxF){
+        The10 <- rbind(The10, Players[i,])
+        FCount <- FCount + 1
+        print("FCount is now: ")
+        print(FCount)
       }
-      else if(grepl("D", Players[i,Position])){
-        
+      else if(grepl("D", Players[i, 3]) & DCount < MaxD){
+        The10 <- rbind(The10, Players[i,])
+        DCount <- DCount + 1
+        print("DCount is now: ")
+        print(DCount)
       }
-      else{
-        
+      else if(grepl("M", Players[i, 3]) & MCount < MaxM){
+        The10 <- rbind(The10, Players[i,])
+        MCount <- MCount + 1
+        print("MCount is now: ")
+        print(MCount)
       }
-      Total <- Total +1
     }
   }
-
-  TheTop10 <- append(TheTop10, x)
-  
-  return(Players)
+  return(The10)
 }
 
-Top10(df, "Joe", "PosAdjFP.G")
+Top10(df, "FA", "PosAdjFP.G")
 
 ui <- fluidPage(
   
