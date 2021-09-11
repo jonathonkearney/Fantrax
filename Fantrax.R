@@ -146,6 +146,42 @@ FTeams <- merge(temp, temp2, by="Team")
 
 FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
 
+Top10 <- function(Data, Team, Metric) {
+  TheTop10 <- c()
+  MaxD <- 5
+  MaxM <- 5
+  MaxF <- 3
+  DCount <- 0
+  MCount <- 0
+  FCount <- 0
+  Total <- 0
+  
+  Players <- filter(Data, Data$Status == {{Team}}) #Needs 2x Curly for some reason
+  Players <- select(Players, Status, Player, Position, Metric)
+  Players <- arrange(Players, desc(Players[,Metric]))
+  
+  for (row in 1:nrow(Players)) {
+    if(Total < 11){
+      if(grepl("F", Players[i,Position])){
+        
+      }
+      else if(grepl("D", Players[i,Position])){
+        
+      }
+      else{
+        
+      }
+      Total <- Total +1
+    }
+  }
+
+  TheTop10 <- append(TheTop10, x)
+  
+  return(Players)
+}
+
+Top10(df, "Joe", "PosAdjFP.G")
+
 ui <- fluidPage(
   
   theme = shinytheme("flatly"),
