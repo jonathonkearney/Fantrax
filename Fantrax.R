@@ -139,7 +139,7 @@ FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
 
 Top10 <- function(Data, Metric) {
   Pred <- select(df, Status, Player, Position, Metric)
-  Pred <- GDPred[FALSE,]
+  Pred <- Pred[FALSE,]
   TheTeams <- unique(df[["Status"]])
   for (i in 1:length(TheTeams)) {
     MaxD <- 5
@@ -175,6 +175,11 @@ Top10 <- function(Data, Metric) {
   }
   return(Pred)
 }
+
+#Write to CSV for Markdown
+write.csv(df,"C:/Users/Joe/Documents/R/Fantrax_Data.csv", row.names = FALSE)
+
+write.csv(FTeams,"C:/Users/Joe/Documents/R/Fantrax_Agg_Data.csv", row.names = FALSE)
 
 ui <- fluidPage(
   
