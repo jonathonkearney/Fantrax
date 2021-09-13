@@ -13,10 +13,10 @@ setwd("C:/Users/Joe/Documents/R")
 df_MD <- read.csv("Fantrax_Data.csv", header = TRUE)
 FTeams_MD <- read.csv("Fantrax_Agg_Data.csv", header = TRUE)
 
-# rm(list=ls())
 ```
 
 ### Stats going into gameweek `r max(df_MD$GP)` 
+*All stats are for outfielders only, with more than 20 mins game time*
 ***
 #### Most favourable matchups
 *sum total difference between each players league team position and their opponents league team position*
@@ -29,8 +29,8 @@ ggplot(FTeams_MD, aes(x=reorder(Team, Total_PosDif, FUN=mean), Total_PosDif, fil
 ```
 
 ***
-#### Best Squad (inc bench)
-*Distribution of the FP.G of all 14 outfielders for each team*
+#### Best squad (inc bench)
+*Distribution of the FP.G of all 14 outfielders for each team. Ordered by mean.*
 
 ```{r, echo = FALSE, fig.height = 6, fig.width = 10}
 
@@ -42,4 +42,60 @@ temp <- subset(df_MD, Status!= "W (Fri)" & Status!= "W (Sat)" & Status!= "W (Sun
 p <- ggplot(temp, aes(x=reorder(Status, FP.G, FUN=mean), fill=Status,  y=FP.G))
 p + geom_boxplot(coef = 5) + labs(x = "Teams", y = "FP.G")
 
+```
+
+***
+#### Best chance creators
+*Key passes per 90 by Assists per 90*
+
+```{r, echo = FALSE, fig.height = 6, fig.width = 10}
+
+temp2 <- subset(df_MD, Status!= "W (Fri)" & Status!= "W (Sat)" & Status!= "W (Sun)" & 
+                        Status!= "W (Mon)" & Status!= "W (Tue)" & Status!= "W (Wed)" &
+                        Status!= "W (Thu)" & Status!= "FA")
+
+p <- ggplot(temp2, aes(A.90, KP.90, colour = Status)) +
+        geom_point() +
+        geom_text(
+          aes(label = Player),
+          check_overlap = T,
+          adj = -0.1,
+          vjust="inward"
+        ) +
+          coord_flip(clip = "off")
+
+p + theme_classic()
+```
+
+#### Best goal scorers
+*Shots on target per 90 by Goals per 90*
+
+```{r, echo = FALSE, fig.height = 6, fig.width = 10}
+
+temp3 <- subset(df_MD, Status!= "W (Fri)" & Status!= "W (Sat)" & Status!= "W (Sun)" & 
+                        Status!= "W (Mon)" & Status!= "W (Tue)" & Status!= "W (Wed)" &
+                        Status!= "W (Thu)" & Status!= "FA")
+
+p <- ggplot(temp3, aes(G.90, SOT.90, colour = Status)) +
+        geom_point() +
+        geom_text(
+          aes(label = Player),
+          check_overlap = T,
+          adj = -0.1,
+          vjust="inward"
+        ) +
+          coord_flip(clip = "off")
+
+p + theme_classic()
+```
+
+***
+#### Predicted scores (based on opposition goal difference)
+*Sum of the Top 10 players for each team where each players score is their FP/G adjusted depending on their opponents goal difference, goals for, and goals against*
+
+```{r, echo = FALSE, fig.height = 6, fig.width = 10}
+
+ggplot(FTeams_MD, aes(x=reorder(Team, Top10_Total_GDAdjFP.G, FUN=mean), Top10_Total_GDAdjFP.G, fill=Team)) +
+      geom_bar(stat="identity") + labs(x = "Teams", y = "Goal Difference Adjusted Prediction") +
+      geom_text(aes(label = round(Top10_Total_GDAdjFP.G,2)), position=position_dodge(width=0.9), vjust=-0.25)
 ```
