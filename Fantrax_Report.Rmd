@@ -19,7 +19,7 @@ FTeams_MD <- read.csv("Fantrax_Agg_Data.csv", header = TRUE)
 ### Stats going into gameweek `r max(df_MD$GP)` 
 ***
 #### Most favourable matchups
-sum total difference between each players league team position and their opponents league team position
+*sum total difference between each players league team position and their opponents league team position*
 
 ```{r, echo = FALSE, fig.height = 6, fig.width = 10}
 
@@ -29,9 +29,8 @@ ggplot(FTeams_MD, aes(x=reorder(Team, Total_PosDif, FUN=mean), Total_PosDif, fil
 ```
 
 ***
-
 #### Best Squad (inc bench)
-Distribution of the FP.G of all 14 outfielders for each team
+*Distribution of the FP.G of all 14 outfielders for each team*
 
 ```{r, echo = FALSE, fig.height = 6, fig.width = 10}
 
