@@ -90,12 +90,13 @@ p + theme_classic()
 ```
 
 ***
-#### Predicted scores (based on opposition goal difference)
-*Sum of the Top 10 players for each team where each players score is their FP/G adjusted depending on their opponents goal difference, goals for, and goals against*
+#### Predicted scores (based on opposition league table position)
+*Sum of the Top 10 players for each team where each players score is their FP/G adjusted depending on their opponents league table position*
 
 ```{r, echo = FALSE, fig.height = 6, fig.width = 10}
 
-ggplot(FTeams_MD, aes(x=reorder(Team, Top10_Total_GDAdjFP.G, FUN=mean), Top10_Total_GDAdjFP.G, fill=Team)) +
+
+ggplot(FTeams_MD, aes(x=reorder(Team, Top10_Total_PosAdjFP.G, FUN=mean), Top10_Total_PosAdjFP.G, fill=Team)) +
       geom_bar(stat="identity") + labs(x = "Teams", y = "Goal Difference Adjusted Prediction") +
-      geom_text(aes(label = round(Top10_Total_GDAdjFP.G,2)), position=position_dodge(width=0.9), vjust=-0.25)
+      geom_text(aes(label = round(Top10_Total_PosAdjFP.G,2)), position=position_dodge(width=0.9), vjust=-0.25)
 ```
