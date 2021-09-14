@@ -8,6 +8,7 @@ output:
 ```{r, echo = FALSE, message=FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 library(tidyverse)
+library(RColorBrewer)
 
 setwd("C:/Users/Joe/Documents/R")
 df_MD <- read.csv("Fantrax_Data.csv", header = TRUE)
@@ -17,15 +18,19 @@ FTeams_MD <- read.csv("Fantrax_Agg_Data.csv", header = TRUE)
 
 ### Stats going into gameweek `r max(df_MD$GP)` 
 *All stats are for outfielders only, with more than 20 mins game time*
+
 ***
 #### Most favourable matchups
 *sum total difference between each players league team position and their opponents league team position*
 
 ```{r, echo = FALSE, fig.height = 6, fig.width = 10}
 
+Colours <- brewer.pal(length(unique(FTeams_MD$Team)), "Paired")
+
 ggplot(FTeams_MD, aes(x=reorder(Team, Total_PosDif, FUN=mean), Total_PosDif, fill=Team)) +
       geom_bar(stat="identity") + labs(x = "Teams", y = "Sum Table Difference") +
-      geom_text(aes(label = round(Total_PosDif,2)), position=position_dodge(width=0.9), vjust=-0.25)
+      geom_text(aes(label = round(Total_PosDif,2)), position=position_dodge(width=0.9), vjust=-0.25) + 
+      scale_fill_manual(values = Colours)
 ```
 
 ***
@@ -38,9 +43,11 @@ temp <- subset(df_MD, Status!= "W (Fri)" & Status!= "W (Sat)" & Status!= "W (Sun
                         Status!= "W (Mon)" & Status!= "W (Tue)" & Status!= "W (Wed)" &
                         Status!= "W (Thu)" & Status!= "FA")
 
+Colours <- brewer.pal(length(unique(FTeams_MD$Team)), "Paired")
 
 p <- ggplot(temp, aes(x=reorder(Status, FP.G, FUN=mean), fill=Status,  y=FP.G))
-p + geom_boxplot(coef = 5) + labs(x = "Teams", y = "FP.G")
+p + geom_boxplot(coef = 5) + labs(x = "Teams", y = "FP.G") + 
+      scale_fill_manual(values = Colours)
 
 ```
 
@@ -54,8 +61,10 @@ temp2 <- subset(df_MD, Status!= "W (Fri)" & Status!= "W (Sat)" & Status!= "W (Su
                         Status!= "W (Mon)" & Status!= "W (Tue)" & Status!= "W (Wed)" &
                         Status!= "W (Thu)" & Status!= "FA")
 
+Colours <- brewer.pal(length(unique(FTeams_MD$Team)), "Paired")
+
 p <- ggplot(temp2, aes(A.90, KP.90, colour = Status)) +
-        geom_point() +
+        geom_point() + scale_fill_manual(values = Colours) +
         geom_text(
           aes(label = Player),
           check_overlap = T,
@@ -76,8 +85,10 @@ temp3 <- subset(df_MD, Status!= "W (Fri)" & Status!= "W (Sat)" & Status!= "W (Su
                         Status!= "W (Mon)" & Status!= "W (Tue)" & Status!= "W (Wed)" &
                         Status!= "W (Thu)" & Status!= "FA")
 
+Colours <- brewer.pal(length(unique(FTeams_MD$Team)), "Paired")
+
 p <- ggplot(temp3, aes(G.90, SOT.90, colour = Status)) +
-        geom_point() +
+        geom_point() + scale_fill_manual(values = Colours) +
         geom_text(
           aes(label = Player),
           check_overlap = T,
@@ -95,8 +106,10 @@ p + theme_classic()
 
 ```{r, echo = FALSE, fig.height = 6, fig.width = 10}
 
+Colours <- brewer.pal(length(unique(FTeams_MD$Team)), "Paired")
 
 ggplot(FTeams_MD, aes(x=reorder(Team, Top10_Total_PosAdjFP.G, FUN=mean), Top10_Total_PosAdjFP.G, fill=Team)) +
       geom_bar(stat="identity") + labs(x = "Teams", y = "Goal Difference Adjusted Prediction") +
-      geom_text(aes(label = round(Top10_Total_PosAdjFP.G,2)), position=position_dodge(width=0.9), vjust=-0.25)
+      geom_text(aes(label = round(Top10_Total_PosAdjFP.G,2)), position=position_dodge(width=0.9), vjust=-0.25) +
+      scale_fill_manual(values = Colours)
 ```
