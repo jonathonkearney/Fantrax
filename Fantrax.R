@@ -102,8 +102,11 @@ df$AT.KP <- round(df$AT.90 / df$KP.90, digits = 2)
 AdjFactor <- 0.3 #I added the *.3 because I dont think they vary that much. and the score is an adjusted avg, not a upper or lower limit 
 
 df$PosDif <- df$OppPos - df$TeamPos
-df$PosAdjFP.G <- round(df$FP.G * (1 + (((1/19) * df$PosDif)*AdjFactor)), 2)
+
+df$PosAdjFP.G <- round(df$FP.G * (1 + (((1/10) * (df$OppPos - 10.5) )*AdjFactor)), 2)
+
 df$PosAdjFP.90 <- round(df$FPts.90 * (1 + (((1/19) * df$PosDif)*AdjFactor)), 2)
+
 
 #create adjusted scores by calculating position against OppGA, OppGF, OppGA
 df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/ (RangeOppGA/2) ) * (df$OppGA - (RangeOppGA/2)) )*AdjFactor)), 2), 
@@ -114,6 +117,7 @@ df$GDAdjFP.G <- ifelse(grepl("F", df$Position), round(df$FP.G * (1 + (((1/ (Rang
 #add in the percetage games played variable
 # gameweeks <-max(df$GP)
 # df$GPxPosAdjFP.G<- round(df$PosAdjFP.G *(df$GP / gameweeks), 2)
+
 
 PosPred <- Top10(df, "PosAdjFP.G")
 GDPred <- Top10(df, "GDAdjFP.G")
