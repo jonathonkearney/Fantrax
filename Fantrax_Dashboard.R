@@ -103,7 +103,10 @@ ui <- fluidPage(
                         sidebarPanel(
                           
                           width = "2",
-                          selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Total_OppPos", "Top10_Total_GDAdjFP.G", "Total_GDAdjFP.G", "Total_PosAdjFP.G", "Top10_Total_PosAdjFP.G", "Total_PosDif")), selected = "Total_PosDif")
+                          selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Starting11_GDAdjFP.G", "Starting11_PosAdjFP.G",
+                                                                                      "Total_OppPos", "Top10_Total_GDAdjFP.G", "Total_GDAdjFP.G",
+                                                                                      "Total_PosAdjFP.G", "Top10_Total_PosAdjFP.G", "Total_PosDif")),
+                                                                                      selected = "Total_PosDif")
                           
                         ),
                         
