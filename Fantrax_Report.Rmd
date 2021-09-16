@@ -17,7 +17,6 @@ FTeams_MD <- read.csv("Fantrax_Agg_Data.csv", header = TRUE)
 ```
 
 ### Stats going into gameweek `r max(df_MD$GP) + 1` 
-*All stats are for outfielders only, with more than 20 mins game time*
 
 ***
 #### Best squad (inc bench)
@@ -108,8 +107,8 @@ ggplot(FTeams_MD, aes(x=reorder(Team, Total_OppPos, FUN=mean), Total_OppPos, fil
 
 Colours <- brewer.pal(length(unique(FTeams_MD$Team)), "Paired")
 
-ggplot(FTeams_MD, aes(x=reorder(Team, Top10_Total_PosAdjFP.G, FUN=mean), Top10_Total_PosAdjFP.G, fill=Team)) +
-      geom_bar(stat="identity") + labs(x = "Teams", y = "Goal Difference Adjusted Prediction") +
-      geom_text(aes(label = round(Top10_Total_PosAdjFP.G,2)), position=position_dodge(width=0.9), vjust=-0.25) +
+ggplot(FTeams_MD, aes(x=reorder(Team, Starting11_PosAdjFP.G, FUN=mean), Starting11_PosAdjFP.G, fill=Team)) +
+      geom_bar(stat="identity") + labs(x = "Teams", y = "League table Position Adjusted Prediction") +
+      geom_text(aes(label = round(Starting11_PosAdjFP.G,2)), position=position_dodge(width=0.9), vjust=-0.25) +
       scale_fill_manual(values = Colours)
 ```
