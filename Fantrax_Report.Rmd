@@ -10,28 +10,14 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(tidyverse)
 library(RColorBrewer)
 
-setwd("C:/Users/Joe/Documents/R")
+setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax")
 df_MD <- read.csv("Fantrax_Data.csv", header = TRUE)
 FTeams_MD <- read.csv("Fantrax_Agg_Data.csv", header = TRUE)
 
 ```
 
-### Stats going into gameweek `r max(df_MD$GP)` 
+### Stats going into gameweek `r max(df_MD$GP) + 1` 
 *All stats are for outfielders only, with more than 20 mins game time*
-
-***
-#### Most favourable matchups
-*sum total difference between each players league team position and their opponents league team position*
-
-```{r, echo = FALSE, fig.height = 6, fig.width = 10}
-
-Colours <- brewer.pal(length(unique(FTeams_MD$Team)), "Paired")
-
-ggplot(FTeams_MD, aes(x=reorder(Team, Total_PosDif, FUN=mean), Total_PosDif, fill=Team)) +
-      geom_bar(stat="identity") + labs(x = "Teams", y = "Sum Table Difference") +
-      geom_text(aes(label = round(Total_PosDif,2)), position=position_dodge(width=0.9), vjust=-0.25) + 
-      scale_fill_manual(values = Colours)
-```
 
 ***
 #### Best squad (inc bench)
@@ -98,6 +84,20 @@ p <- ggplot(temp3, aes(G.90, SOT.90, colour = Status)) +
           coord_flip(clip = "off")
 
 p + theme_classic()
+```
+
+***
+#### Most favourable matchups 
+*Sum total of the league position of the opposition team for all your players. (higher = better matchups)*
+
+```{r, echo = FALSE, fig.height = 6, fig.width = 10}
+
+Colours <- brewer.pal(length(unique(FTeams_MD$Team)), "Paired")
+
+ggplot(FTeams_MD, aes(x=reorder(Team, Total_OppPos, FUN=mean), Total_OppPos, fill=Team)) +
+      geom_bar(stat="identity") + labs(x = "Teams", y = "Sum Opposition Table Position") +
+      geom_text(aes(label = round(Total_OppPos,2)), position=position_dodge(width=0.9), vjust=-0.25) +
+      scale_fill_manual(values = Colours)
 ```
 
 ***
