@@ -34,10 +34,11 @@ league_table$Team <- sub("Wolverhampton Wanderers", "WOL", league_table$Team)
 league_table$Team <- sub("Norwich City", "NOR", league_table$Team)
 league_table$Team <- sub("Arsenal", "ARS", league_table$Team)
 
-#set the directory as the R folder and save the two tables as variables
+#set the directory as the R folder and save the tables as variables
 setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax") 
 FS <- read.csv("FS.csv", header = TRUE)
 FT <- read.csv("FT.csv", header = TRUE)
+Keepers <- read.csv("FT_G.csv", header = TRUE)
 
 #merge the two tables together
 df <- merge(x = FT, y = FS)
@@ -144,6 +145,11 @@ temp2 <- merge(temp2, AggTemp6, by="Team")
 FTeams <- merge(temp, temp2, by="Team")
 
 FTeams <- FTeams[!startsWith(FTeams$Team, "W (") & FTeams$Team != "FA",]
+
+KeepersTemp <- Keepers[!startsWith(Keepers$Status, "W (") & Keepers$Status != "FA",]
+
+FTeams$Starting11_PosAdjFP.G <- FTeams$Top10_Total_PosAdjFP.G + KeepersTemp$FP.G
+FTeams$Starting11_GDAdjFP.G <- FTeams$Top10_Total_GDAdjFP.G + KeepersTemp$FP.G
 
 Top10 <- function(Data, Metric) {
   Pred <- select(df, Status, Player, Position, Metric)
