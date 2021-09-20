@@ -5,6 +5,45 @@ library(DT)
 library(corrplot)
 library(rvest)
 
+Top10 <- function(Data, Metric) {
+  Pred <- select(df, Status, Player, Position, Metric)
+  Pred <- Pred[FALSE,]
+  TheTeams <- unique(df[["Status"]])
+  for (i in 1:length(TheTeams)) {
+    MaxD <- 5
+    MaxM <- 5
+    MaxF <- 3
+    DCount <- 0
+    MCount <- 0
+    FCount <- 0
+    
+    Players <- filter(Data, Data$Status == TheTeams[i]) 
+    Players <- select(Players, Status, Player, Position, Metric)
+    Players <- arrange(Players, desc(Players[,Metric]))
+    
+    The10 <- Players[FALSE,] #makes an empty DF with the columns we want
+    
+    for (j in 1:nrow(Players)) {
+      if((DCount + MCount + FCount) < 10){
+        if(grepl("F", Players[j, 3]) & FCount < MaxF){
+          The10 <- rbind(The10, Players[j,])
+          FCount <- FCount + 1
+        }
+        else if(grepl("D", Players[j, 3]) & DCount < MaxD){
+          The10 <- rbind(The10, Players[j,])
+          DCount <- DCount + 1
+        }
+        else if(grepl("M", Players[j, 3]) & MCount < MaxM){
+          The10 <- rbind(The10, Players[j,])
+          MCount <- MCount + 1
+        }
+      }
+    }
+    Pred <- rbind(Pred, The10)
+  }
+  return(Pred)
+}
+
 url_data <- "https://en.wikipedia.org/wiki/2021%E2%80%9322_Premier_League"
 css_selector <- "#mw-content-text > div.mw-parser-output > table:nth-child(25)"
 league_table <- url_data %>% 
@@ -151,44 +190,7 @@ KeepersTemp <- Keepers[!startsWith(Keepers$Status, "W (") & Keepers$Status != "F
 FTeams$Starting11_PosAdjFP.G <- FTeams$Top10_Total_PosAdjFP.G + KeepersTemp$FP.G
 FTeams$Starting11_GDAdjFP.G <- FTeams$Top10_Total_GDAdjFP.G + KeepersTemp$FP.G
 
-Top10 <- function(Data, Metric) {
-  Pred <- select(df, Status, Player, Position, Metric)
-  Pred <- Pred[FALSE,]
-  TheTeams <- unique(df[["Status"]])
-  for (i in 1:length(TheTeams)) {
-    MaxD <- 5
-    MaxM <- 5
-    MaxF <- 3
-    DCount <- 0
-    MCount <- 0
-    FCount <- 0
-    
-    Players <- filter(Data, Data$Status == TheTeams[i]) 
-    Players <- select(Players, Status, Player, Position, Metric)
-    Players <- arrange(Players, desc(Players[,Metric]))
-    
-    The10 <- Players[FALSE,] #makes an empty DF with the columns we want
-    
-    for (j in 1:nrow(Players)) {
-      if((DCount + MCount + FCount) < 10){
-        if(grepl("F", Players[j, 3]) & FCount < MaxF){
-          The10 <- rbind(The10, Players[j,])
-          FCount <- FCount + 1
-        }
-        else if(grepl("D", Players[j, 3]) & DCount < MaxD){
-          The10 <- rbind(The10, Players[j,])
-          DCount <- DCount + 1
-        }
-        else if(grepl("M", Players[j, 3]) & MCount < MaxM){
-          The10 <- rbind(The10, Players[j,])
-          MCount <- MCount + 1
-        }
-      }
-    }
-    Pred <- rbind(Pred, The10)
-  }
-  return(Pred)
-}
+
 
 #Write to CSV for Markdown and Dashboard
 write.csv(df,"C:/Users/OEM/OneDrive/Documents/R/Fantrax/Fantrax_Data.csv", row.names = FALSE)
