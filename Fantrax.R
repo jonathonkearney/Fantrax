@@ -44,8 +44,9 @@ Top10 <- function(Data, Metric) {
   return(Pred)
 }
 
+#The number at the end of the selector may need to be +1. It may go up each week? 
 url_data <- "https://en.wikipedia.org/wiki/2021%E2%80%9322_Premier_League"
-css_selector <- "#mw-content-text > div.mw-parser-output > table:nth-child(25)"
+css_selector <- "#mw-content-text > div.mw-parser-output > table:nth-child(26)"
 league_table <- url_data %>% 
   read_html() %>% 
   html_element(css = css_selector) %>% 
@@ -190,9 +191,22 @@ KeepersTemp <- Keepers[!startsWith(Keepers$Status, "W (") & Keepers$Status != "F
 FTeams$Starting11_PosAdjFP.G <- FTeams$Top10_Total_PosAdjFP.G + KeepersTemp$FP.G
 FTeams$Starting11_GDAdjFP.G <- FTeams$Top10_Total_GDAdjFP.G + KeepersTemp$FP.G
 
+df.numeric <- df[,sapply(df, is.numeric)]
+Stats1 <- summarize_all(df.numeric, sd)
+Stats2 <- summarize_all(df.numeric, mean)
+Summaries <- rbind(Stats1, Stats2)
+Summaries <- data.frame(t(Summaries))
+Summaries <- Summaries[!(row.names(Summaries) %in% c("OppGA", "OppGF", "OppGD")),]
+Summaries <- tibble::rownames_to_column(Summaries, "Metric")
+colnames(Summaries) <- c("Metric", "SD", "Mean")
+Summaries$CoV <- Summaries$SD / Summaries$Mean
+Summaries <- head(Summaries, -5)
 
+Summaries <- Summaries %>% mutate_if(is.numeric, round, digits=2)
 
 #Write to CSV for Markdown and Dashboard
 write.csv(df,"C:/Users/OEM/OneDrive/Documents/R/Fantrax/Fantrax_Data.csv", row.names = FALSE)
 
 write.csv(FTeams,"C:/Users/OEM/OneDrive/Documents/R/Fantrax/Fantrax_Agg_Data.csv", row.names = FALSE)
+
+write.csv(Summaries,"C:/Users/OEM/OneDrive/Documents/R/Fantrax/Fantrax_Summaries.csv", row.names = FALSE)
