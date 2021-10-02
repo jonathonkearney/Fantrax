@@ -3,6 +3,7 @@ library(shiny)
 setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax")
 df_DB <- read.csv("Fantrax_Data.csv", header = TRUE)
 FTeams_DB <- read.csv("Fantrax_Agg_Data.csv", header = TRUE)
+Summaries_DB <- read.csv("Fantrax_Summaries.csv", header = TRUE)
 
 ui <- fluidPage(
   
@@ -48,7 +49,7 @@ ui <- fluidPage(
                         )
                       )
              ),
-             tabPanel("Correlations",
+             tabPanel("Summaries",
                       sidebarLayout(
                         
                         sidebarPanel(
@@ -58,7 +59,7 @@ ui <- fluidPage(
                         ),
                         
                         mainPanel(
-                          plotOutput(outputId = "corrPlot",width = "1500px", height = "150px")
+                          DT::dataTableOutput("STable")
                         )
                       )
              ),
@@ -197,13 +198,14 @@ server <- function(input, output) {
                       "GP", "Min.GP", "KP.90", "G.90", "A.90"))
   })
   
-  output$corrPlot <- renderPlot({
+  output$STable <- DT::renderDataTable(
     
-    temp <- select(df_DB, ends_with(".90"))
+    Summaries_DB,
+    options = list(
+      pageLength = 100
+    )
     
-    m <- cor(x = df_DB$FPts.90, y = temp)
-    corrplot(m, method = "number", tl.srt = 25)
-  })
+  )
   
   output$fTeams <- renderPlot({
     
