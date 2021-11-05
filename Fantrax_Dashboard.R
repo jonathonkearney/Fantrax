@@ -18,10 +18,10 @@ ui <- fluidPage(
                           width = "2",
                           
                           selectInput("team","Choose a team", choices = c("All",unique(sort(df_DB$Team))), selected = "All"),
-                          selectInput("status","Choose a Status", choices = c("All", "All Available", unique(sort(df_DB$Status)), "Waiver"), selected = "All"),
+                          selectInput("status","Choose a Status", choices = c("All", "All Available", unique(sort(df_DB$Status)), "Waiver"), selected = "All Available"),
                           selectInput("position","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           selectInput("yAxis","Choose the Y Axis", choices = sort(names(df_DB)), selected = "FPts.90"),
-                          selectInput("xAxis","Choose the X Axis", choices = sort(names(df_DB)), selected = "SFTP.90"),
+                          selectInput("xAxis","Choose the X Axis", choices = sort(names(df_DB)), selected = "Min"),
                           checkboxInput("addLines", "Add Lines", value = FALSE, width = NULL)
                           
                         ),
@@ -107,7 +107,7 @@ ui <- fluidPage(
                           selectInput("PosDifY","Choose the Y Axis", choices = sort(c("Starting11_GDAdjFP.G", "Starting11_PosAdjFP.G",
                                                                                       "Total_OppPos", "Top10_Total_GDAdjFP.G", "Total_GDAdjFP.G",
                                                                                       "Total_PosAdjFP.G", "Top10_Total_PosAdjFP.G", "Total_PosDif")),
-                                                                                      selected = "Total_OppPos")
+                                      selected = "Total_OppPos")
                         ),
                         
                         mainPanel(
@@ -194,8 +194,8 @@ server <- function(input, output) {
       }
     }
     df_DB %>% select(c("Player", "Position", "Team", "Status", "FP.G", "FPts.90", "GDAdjFP.G",
-                       "PosAdjFP.G", "PosDif", "Opponent", "OppGD",  
-                      "GP", "Min.GP", "KP.90", "G.90", "A.90"))
+                       "PosAdjFP.G", "Opponent", "OppPos", "OppGA", "OppGF", "OppGD",  
+                       "GP", "Min.GP"))
   })
   
   output$STable <- DT::renderDataTable(
