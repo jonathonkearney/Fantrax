@@ -59,6 +59,14 @@ understat$Player[understat$Player == "N&#039;Golo Kante"] <- "N'Golo Kante"
 understat$Player[understat$Player == "Lewis O&#039;Brien"] <- "Lewis O'Brien"
 understat$Player[understat$Player == "Rayan Ait Nouri"] <- "Rayan Ait-Nouri"
 understat$Player[understat$Player == "Josh Dasilva"] <- "Pelenda Joshua Da Silva"
+understat$Player[understat$Player == "Hee-Chan Hwang"] <- "Hwang Hee-Chan"
+understat$Player[understat$Player == "Emerson"] <- "Emerson Royal"
+understat$Player[understat$Player == "Bobby Reid"] <- "Bobby De Cordova-Reid"
+understat$Player[understat$Player == "Ezri Konsa Ngoyo"] <- "Ezri Konsa"
+understat$Player[understat$Player == "Gabriel"] <- "Gabriel Magalhaes"
+understat$Player[understat$Player == "Matthew Cash"] <- "Matty Cash"
+understat$Player[understat$Player == "Thiago Alcantara"] <- "Thiago"
+
 
 #merge the two tables
 df <- merge(x = df, y = understat, by = "Player", all.x = TRUE)
@@ -133,7 +141,7 @@ ui <- fluidPage(
             selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(df$Team))), selected = "All"),
             selectInput("pStatus","Choose a Status", choices = c("All", "All Available", unique(sort(df$Status)), "Waiver"), selected = "All Available"),
             selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "SFTP.90"),
+            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "xGandxA"),
             selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "KP.90"),
             sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
             sliderInput("pGamesPlayed", "Minimum Games Played", min = min(df$GP), max = max(df$GP), value = min(df$GP)),
@@ -168,12 +176,14 @@ ui <- fluidPage(
                           "FP.G" = "FP.G",
                           "KP.90" = "KP.90",
                           "Min.GP" = "Min.GP",
-                          "GP" = "GP",
                           "A.90" = "A.90",
-                          "G.90" = "G.90"
+                          "G.90" = "G.90",
+                          "xA" = "xA",
+                          "xG" = "xG",
+                          "xGandxA" = "xGandxA"
                           ),
                         selected = c("Player","Position","Team","Status","FPts.90",
-                                     "FP.G", "KP.90", "A.90", "G.90", "Min.GP", "GP")
+                                     "FP.G", "KP.90", "A.90", "G.90", "xA", "xG", "xGandxA",  "Min.GP")
                         ),
           ),
           
