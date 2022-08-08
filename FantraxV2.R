@@ -2,6 +2,9 @@ library(tidyverse)
 library(shiny)
 library(shinythemes)
 library(DT)
+library(rvest)
+library(worldfootballR)
+library(stringi)
 
 # **************************************************
 rm(list = ls())
@@ -17,6 +20,50 @@ df <- merge(x = FT, y = FS)
 #remove the ID column now that we don't need it
 df <- select(df, -ID)
 
+#load the data from Understat
+understat <- understat_team_players_stats(
+  team_url = c(
+    "https://understat.com/team/Arsenal/2022",
+    "https://understat.com/team/Aston_Villa/2022",
+    "https://understat.com/team/Bournemouth/2022",
+    "https://understat.com/team/Brentford/2022",
+    "https://understat.com/team/Brighton/2022",
+    "https://understat.com/team/Chelsea/2022",
+    "https://understat.com/team/Crystal_Palace/2022",
+    "https://understat.com/team/Everton/2022",
+    "https://understat.com/team/Fulham/2022",
+    "https://understat.com/team/Leeds/2022",
+    "https://understat.com/team/Leicester/2022",
+    "https://understat.com/team/Liverpool/2022",
+    "https://understat.com/team/Manchester_City/2022",
+    "https://understat.com/team/Manchester_United/2022",
+    "https://understat.com/team/Newcastle_United/2022",
+    "https://understat.com/team/Nottingham_Forest/2022",
+    "https://understat.com/team/Southampton/2022",
+    "https://understat.com/team/Tottenham/2022",
+    "https://understat.com/team/West_Ham/2022",
+    "https://understat.com/team/Wolverhampton_Wanderers/2022"
+              ))
+
+#extract the Understate columns we want 
+understat <- understat %>% select(player_name, xG, xA, npxG, xGChain, xGBuildup)
+
+#change the Player column name so it matches df
+names(understat)[names(understat) == 'player_name'] <- 'Player'
+
+#Convert all special characters to raw characters
+understat$Player <- stri_trans_general(str = understat$Player, id = "Latin-ASCII")
+
+#specific player cleanups
+understat$Player[understat$Player == "N&#039;Golo Kante"] <- "N'Golo Kante"
+understat$Player[understat$Player == "Lewis O&#039;Brien"] <- "Lewis O'Brien"
+
+#merge the two tables
+df <- merge(x = df, y = understat, by = "Player", all.x = TRUE)
+
+#convert the NAs to 0
+# df <- df %>% replace(is.na(.), 0)
+
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
 df$Min <- as.numeric(as.character(df$Min))
@@ -25,7 +72,7 @@ df$AP <- as.numeric(as.character(df$AP))
 
 #remove all players with less than a certain amount of mins
 #this needs to be non-zero so that we don't get any div/0 errors
-minMins <- 45
+minMins <- 10
 df <- subset(df, Min > minMins)
 
 #add in the .90 columns
@@ -86,10 +133,11 @@ ui <- fluidPage(
             selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(df$Team))), selected = "All"),
             selectInput("pStatus","Choose a Status", choices = c("All", "All Available", unique(sort(df$Status)), "Waiver"), selected = "All Available"),
             selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts.90"),
+            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "SFTP.90"),
             selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "KP.90"),
-            sliderInput("pMinMins", "Minimum Minutes", min = minMins, max = max(df$Min), value = minMins),
             sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
+            sliderInput("pGamesPlayed", "Minimum Games Played", min = min(df$GP), max = max(df$GP), value = min(df$GP)),
+            sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(df$FPts.90), max = max(df$FPts.90), value = min(df$FPts.90)),
             checkboxInput("pAddLines", "Add Lines", value = FALSE, width = NULL)
             
           ),
@@ -109,21 +157,23 @@ ui <- fluidPage(
             selectInput("tTeam","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
             selectInput("tStatus","Choose a Status", choices = c("All", "All Available", unique(df$Status), "Waiver"), selected = "All"),
             selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-            sliderInput("tMinMins", "Minimum Minutes", min = minMins, max = max(df$Min), value = minMins),
             sliderInput("tMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
+            sliderInput("tGamesPlayed", "Minimum Games Played", min = min(df$GP), max = max(df$GP), value = min(df$GP)),
             checkboxGroupInput("tColumns", "Columns:",
                         c("Player" = "Player",
                           "Position" = "Position",
                           "Team" = "Team",
                           "Status" = "Status",
-                          "FP.G" = "FP.G",
                           "FPts.90" = "FPts.90",
+                          "FP.G" = "FP.G",
                           "KP.90" = "KP.90",
-                          "Opponent" = "Opponent",
+                          "Min.GP" = "Min.GP",
                           "GP" = "GP",
-                          "Min" = "Min"
+                          "A.90" = "A.90",
+                          "G.90" = "G.90"
                           ),
-                        selected = c("Player","Position","Team","Status","FPts.90", "KP.90")
+                        selected = c("Player","Position","Team","Status","FPts.90",
+                                     "FP.G", "KP.90", "A.90", "G.90", "Min.GP", "GP")
                         ),
           ),
           
@@ -139,8 +189,9 @@ server <- function(input, output) {
   
   output$plot <- renderPlot({
     df_temp <- df
-    df_temp <- filter(df_temp, Min > input$pMinMins)
-    df_temp <- filter(df_temp, Min.GP > input$pMinMinsPerGP)
+    df_temp <- filter(df_temp, Min.GP >= input$pMinMinsPerGP)
+    df_temp <- filter(df_temp, GP >= input$pGamesPlayed)
+    df_temp <- filter(df_temp, FPts.90 >= input$pMinFPts.90)
     if (input$pTeam != "All") {
       df_temp <- filter(df_temp, Team == input$pTeam)
     }
@@ -171,7 +222,7 @@ server <- function(input, output) {
       geom_point() + 
       geom_text(
         aes(label = Player),
-        check_overlap = T,
+        check_overlap = F,
         adj = -0.1,
         vjust="inward"
       ) +
@@ -188,8 +239,8 @@ server <- function(input, output) {
   
   output$table = DT::renderDataTable({
     df_temp <- df
-    df_temp <- filter(df_temp, Min > input$tMinMins)
-    df_temp <- filter(df_temp, Min.GP > input$tMinMinsPerGP)
+    df_temp <- filter(df_temp, Min.GP >= input$tMinMinsPerGP)
+    df_temp <- filter(df_temp, GP >= input$tGamesPlayed)
     df_temp <- df_temp[, which((names(df_temp) %in% input$tColumns)==TRUE)]
     if (input$tTeam != "All") {
       df_temp <- filter(df_temp, Team == input$tTeam)
