@@ -57,12 +57,11 @@ understat$Player <- stri_trans_general(str = understat$Player, id = "Latin-ASCII
 #specific player cleanups
 understat$Player[understat$Player == "N&#039;Golo Kante"] <- "N'Golo Kante"
 understat$Player[understat$Player == "Lewis O&#039;Brien"] <- "Lewis O'Brien"
+understat$Player[understat$Player == "Rayan Ait Nouri"] <- "Rayan Ait-Nouri"
+understat$Player[understat$Player == "Josh Dasilva"] <- "Pelenda Joshua Da Silva"
 
 #merge the two tables
 df <- merge(x = df, y = understat, by = "Player", all.x = TRUE)
-
-#convert the NAs to 0
-# df <- df %>% replace(is.na(.), 0)
 
 #remove comma from data$Min and AP and convert to numeric 
 df$Min <- as.numeric(gsub("\\,", "", df$Min))
@@ -111,6 +110,7 @@ df <- mutate(df, CSM.90 = round(((CSM / Min)*90),2))
 
 #new columns
 df <- mutate(df, Min.GP = round((Min / GP) ,2))
+df <- mutate(df, xGandxA = xG + xA)
 # df <- mutate(df, Def = round((( / Min)*90),2))
 # df <- mutate(df, Att = round((( / Min)*90),2))
 
