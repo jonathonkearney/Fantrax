@@ -119,9 +119,11 @@ df <- mutate(df, CSM.90 = round(((CSM / Min)*90),2))
 #new columns
 df <- mutate(df, Min.GP = round((Min / GP) ,2))
 df <- mutate(df, xGandxA = xG + xA)
-# df <- mutate(df, Def = round((( / Min)*90),2))
-# df <- mutate(df, Att = round((( / Min)*90),2))
-
+df <- mutate(df, TkWAndIntAndCLR.90 = round((((TkW + Int + CLR) / Min)*90),2))
+df <- mutate(df, SOTAndKP.90 = round((((SOT + KP) / Min)*90),2))
+df <- mutate(df, CoSMinusDIS.90 = round((((CoS - DIS) / Min)*90),2))
+df <- mutate(df, SOTMinusG.90 = round((((SOT - G) / Min)*90),2))
+df <- mutate(df, KPMinusA.90 = round((((KP - A) / Min)*90),2)) 
 
 
 # **************************************************
@@ -141,8 +143,8 @@ ui <- fluidPage(
             selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(df$Team))), selected = "All"),
             selectInput("pStatus","Choose a Status", choices = c("All", "All Available", unique(sort(df$Status)), "Waiver"), selected = "All Available"),
             selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "xGandxA"),
-            selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "KP.90"),
+            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "TkWAndIntAndCLR.90"),
+            selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "SOTAndKP.90"),
             sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
             sliderInput("pGamesPlayed", "Minimum Games Played", min = min(df$GP), max = max(df$GP), value = min(df$GP)),
             sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(df$FPts.90), max = max(df$FPts.90), value = min(df$FPts.90)),
@@ -189,6 +191,22 @@ ui <- fluidPage(
           
           mainPanel(
             DT::dataTableOutput("table")
+          )
+        )
+     ),
+     tabPanel("Box",
+        sidebarLayout(
+          
+          sidebarPanel(
+            
+            width = "2",
+            
+            selectInput("bYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts.90"),
+            selectInput("bXAxis","Choose the X Axis", choices = c("Status", "Team"), selected = "Status")
+          ),
+          
+          mainPanel(
+            plotOutput(outputId = "box",width = "1500px", height = "900px")
           )
         )
      )
@@ -278,6 +296,28 @@ server <- function(input, output) {
       }
     }
     df_temp
+  })
+  
+  output$box <- renderPlot({
+    
+    df_temp <- df
+    
+    if(input$bXAxis == "Status"){
+      df_temp <- df_temp %>%  subset(Status != "W (Fri)" & Status != "W (Sat)" & Status != "W (Sun)" & 
+                                       Status != "W (Mon)" & Status != "W (Tue)" & Status != "W (Wed)" &
+                                       Status != "W (Thu)" & Status != "FA")
+      
+      #input$fTeamY is a character, so you have to use get() in aes 
+      ggplot(df_temp, aes(x = reorder(Status, get(input$bYAxis), FUN=mean), fill=Status)) + aes_string(y = input$bYAxis) +
+        geom_boxplot(coef = 5) + labs(x = "Teams")
+      
+    }else if (input$bXAxis == "Team"){
+      
+      #input$fTeamY is a character, so you have to use get() in aes 
+      ggplot(df_temp, aes(x=reorder(Team, get(input$bYAxis), FUN=mean), get(input$bYAxis), fill=Team)) +
+        geom_boxplot(coef = 5) + labs(x = "Teams")
+    }
+
   })
   
 }
