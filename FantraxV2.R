@@ -5,6 +5,7 @@ library(DT)
 library(rvest)
 library(worldfootballR)
 library(stringi)
+library(shinyWidgets)
 
 # **************************************************
 rm(list = ls())
@@ -66,6 +67,8 @@ understat$Player[understat$Player == "Ezri Konsa Ngoyo"] <- "Ezri Konsa"
 understat$Player[understat$Player == "Gabriel"] <- "Gabriel Magalhaes"
 understat$Player[understat$Player == "Matthew Cash"] <- "Matty Cash"
 understat$Player[understat$Player == "Thiago Alcantara"] <- "Thiago"
+understat$Player[understat$Player == "Emile Smith-Rowe"] <- "Emile Smith Rowe"
+understat$Player[understat$Player == "Estupinan"] <- "Pervis Estupinan"
 
 
 #merge the two tables
@@ -81,6 +84,9 @@ df$AP <- as.numeric(as.character(df$AP))
 #this needs to be non-zero so that we don't get any div/0 errors
 minMins <- 10
 df <- subset(df, Min > minMins)
+
+#Statuses
+statuses <- c("W (Mon)", "W (Tue)", "W (Wed)", "W (Thu)", "W (Fri)", "W (Sat)", "W (Sun)", "FA")
 
 #add in the .90 columns
 df <- mutate(df, FPts.90 = round(((FPts / Min)*90),2))
@@ -123,8 +129,23 @@ df <- mutate(df, TkWAndIntAndCLR.90 = round((((TkW + Int + CLR) / Min)*90),2))
 df <- mutate(df, SOTAndKP.90 = round((((SOT + KP) / Min)*90),2))
 df <- mutate(df, CoSMinusDIS.90 = round((((CoS - DIS) / Min)*90),2))
 df <- mutate(df, SOTMinusG.90 = round((((SOT - G) / Min)*90),2))
-df <- mutate(df, KPMinusA.90 = round((((KP - A) / Min)*90),2)) 
+df <- mutate(df, KPMinusA.90 = round((((KP - A) / Min)*90),2))
+df <- mutate(df, xGPerf = G / xG)
+df <- mutate(df, xAPerf = A / xA)
+df <- mutate(df, xGPerfandxAPerf = xGPerf + xAPerf)
 
+#Team data
+teams <- aggregate(FPts ~ Team, df, sum )
+teams$Opponent <- df[match(teams$Team, df[,"Team"]), "Opponent"]
+teams$Opponent <- gsub("@","",as.character(teams$Opponent))
+teams$Opponent <- substr(teams$Opponent, start = 1, stop = 3)
+teams$OFPts <- teams[match(teams$Opponent, teams$Team), "FPts"]
+teams$MatchupScore <- teams$FPts / teams$OFPts
+teamDiff <- subset(teams, select = c(Team, MatchupScore))
+
+df <- merge(x = df, y = teamDiff)
+df$MatchupFP.G <- df$FP.G * df$MatchupScore
+df$MatchupFPts.90 <- df$FPts.90 * df$MatchupScore
 
 # **************************************************
 
@@ -141,9 +162,9 @@ ui <- fluidPage(
             width = "2",
             
             selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(df$Team))), selected = "All"),
-            selectInput("pStatus","Choose a Status", choices = c("All", "All Available", unique(sort(df$Status)), "Waiver"), selected = "All Available"),
+            selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(df$Status)), "Waiver"), selected = "All Available"),
             selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "TkWAndIntAndCLR.90"),
+            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts.90"),
             selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "SOTAndKP.90"),
             sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
             sliderInput("pGamesPlayed", "Minimum Games Played", min = min(df$GP), max = max(df$GP), value = min(df$GP)),
@@ -165,28 +186,11 @@ ui <- fluidPage(
             width = "2",
             
             selectInput("tTeam","Choose a team", choices = c("All",unique(df$Team)), selected = "All"),
-            selectInput("tStatus","Choose a Status", choices = c("All", "All Available", unique(df$Status), "Waiver"), selected = "All"),
+            selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(df$Status), "Waiver"), selected = "All"),
             selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
             sliderInput("tMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
             sliderInput("tGamesPlayed", "Minimum Games Played", min = min(df$GP), max = max(df$GP), value = min(df$GP)),
-            checkboxGroupInput("tColumns", "Columns:",
-                        c("Player" = "Player",
-                          "Position" = "Position",
-                          "Team" = "Team",
-                          "Status" = "Status",
-                          "FPts.90" = "FPts.90",
-                          "FP.G" = "FP.G",
-                          "KP.90" = "KP.90",
-                          "Min.GP" = "Min.GP",
-                          "A.90" = "A.90",
-                          "G.90" = "G.90",
-                          "xA" = "xA",
-                          "xG" = "xG",
-                          "xGandxA" = "xGandxA"
-                          ),
-                        selected = c("Player","Position","Team","Status","FPts.90",
-                                     "FP.G", "KP.90", "A.90", "G.90", "xA", "xG", "xGandxA",  "Min.GP")
-                        ),
+            pickerInput("tPicker", "Columns", choices = sort(names(df)), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE)
           ),
           
           mainPanel(
@@ -201,8 +205,9 @@ ui <- fluidPage(
             
             width = "2",
             
-            selectInput("bYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts.90"),
-            selectInput("bXAxis","Choose the X Axis", choices = c("Status", "Team"), selected = "Status")
+            selectInput("bYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts"),
+            selectInput("bXAxis","Choose the X Axis", choices = c("Status", "Team"), selected = "Status"),
+            selectInput("bPlotType","Plot Type", choices = c("Box", "Violin"), selected = "Box"),
           ),
           
           mainPanel(
@@ -229,6 +234,9 @@ server <- function(input, output) {
       }
       else if (input$pStatus == "All Available") {
         df_temp <- filter(df_temp, str_detect(df_temp$Status, "^W \\(") | str_detect(df_temp$Status, "^FA"))
+      }
+      else if (input$pStatus == "All Taken") {
+        df_temp <- filter(df_temp, !Status %in% statuses)
       }
       else{
         df_temp <- filter(df_temp, Status == input$pStatus)  
@@ -265,11 +273,18 @@ server <- function(input, output) {
     
   }, res = 90) #the resolution of the plot
   
+
   output$table = DT::renderDataTable({
     df_temp <- df
     df_temp <- filter(df_temp, Min.GP >= input$tMinMinsPerGP)
     df_temp <- filter(df_temp, GP >= input$tGamesPlayed)
-    df_temp <- df_temp[, which((names(df_temp) %in% input$tColumns)==TRUE)]
+    
+    columns <- c("Player", "Team", "Status", "Position")
+    
+    columns <- append(columns, input$tPicker)
+    
+    df_temp <- df_temp[, which((names(df_temp) %in% columns)==TRUE)]
+    
     if (input$tTeam != "All") {
       df_temp <- filter(df_temp, Team == input$tTeam)
     }
@@ -279,6 +294,9 @@ server <- function(input, output) {
       }
       else if (input$tStatus == "All Available") {
         df_temp <- filter(df_temp, str_detect(df_temp$Status, "^W \\(") | str_detect(df_temp$Status, "^FA"))
+      }
+      else if (input$tStatus == "All Taken") {
+        df_temp <- filter(df_temp, !Status %in% statuses)
       }
       else{
         df_temp <- filter(df_temp, df_temp$Status == input$tStatus)  
@@ -307,15 +325,36 @@ server <- function(input, output) {
                                        Status != "W (Mon)" & Status != "W (Tue)" & Status != "W (Wed)" &
                                        Status != "W (Thu)" & Status != "FA")
       
-      #input$fTeamY is a character, so you have to use get() in aes 
-      ggplot(df_temp, aes(x = reorder(Status, get(input$bYAxis), FUN=mean), fill=Status)) + aes_string(y = input$bYAxis) +
-        geom_boxplot(coef = 5) + labs(x = "Teams")
+      if(input$bPlotType == "Box"){
+        #input$fTeamY is a character, so you have to use get() in aes 
+        ggplot(df_temp, aes(x = reorder(Status, get(input$bYAxis), FUN=mean), fill=Status)) + aes_string(y = input$bYAxis) +
+          geom_boxplot(coef = 5) + labs(x = "Teams")
+        
+      } else {
+        #input$fTeamY is a character, so you have to use get() in aes 
+        ggplot(df_temp, aes(x = reorder(Status, get(input$bYAxis), FUN=mean), fill=Status)) + aes_string(y = input$bYAxis) +
+          geom_violin(aes(fill = factor(Status))) +
+          geom_boxplot(coef = 5, width=0.1, color="grey", alpha=0.2) + labs(x = "Teams") +
+          labs(x = "Teams")
+      }
+      
+      
       
     }else if (input$bXAxis == "Team"){
       
-      #input$fTeamY is a character, so you have to use get() in aes 
-      ggplot(df_temp, aes(x=reorder(Team, get(input$bYAxis), FUN=mean), get(input$bYAxis), fill=Team)) +
-        geom_boxplot(coef = 5) + labs(x = "Teams")
+      if(input$bPlotType == "Box"){
+        #input$fTeamY is a character, so you have to use get() in aes 
+        ggplot(df_temp, aes(x=reorder(Team, get(input$bYAxis), FUN=mean), get(input$bYAxis), fill=Team)) +
+          geom_boxplot(coef = 5) + labs(x = "Teams")
+        
+      } else {
+        #input$fTeamY is a character, so you have to use get() in aes 
+        ggplot(df_temp, aes(x=reorder(Team, get(input$bYAxis), FUN=mean), get(input$bYAxis), fill=Team)) +
+          geom_violin(aes(fill = factor(Team))) +
+          geom_boxplot(coef = 5, width=0.1, color="grey", alpha=0.2) + labs(x = "Teams") +
+          labs(x = "Teams")
+      }
+      
     }
 
   })
