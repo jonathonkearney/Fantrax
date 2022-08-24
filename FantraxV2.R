@@ -135,13 +135,14 @@ df <- mutate(df, xAPerf = A / xA)
 df <- mutate(df, xGPerfandxAPerf = xGPerf + xAPerf)
 
 #Team data
-teams <- aggregate(FPts ~ Team, df, sum )
+teams <- aggregate(FPts.90 ~ Team, df, mean )
 teams$Opponent <- df[match(teams$Team, df[,"Team"]), "Opponent"]
 teams$Opponent <- gsub("@","",as.character(teams$Opponent))
 teams$Opponent <- substr(teams$Opponent, start = 1, stop = 3)
-teams$OFPts <- teams[match(teams$Opponent, teams$Team), "FPts"]
-teams$MatchupScore <- teams$FPts / teams$OFPts
+teams$OFPts.90 <- teams[match(teams$Opponent, teams$Team), "FPts.90"]
+teams$MatchupScore <- teams$FPts.90 / teams$OFPts.90
 teamDiff <- subset(teams, select = c(Team, MatchupScore))
+
 
 df <- merge(x = df, y = teamDiff)
 df$MatchupFP.G <- df$FP.G * df$MatchupScore
@@ -205,7 +206,7 @@ ui <- fluidPage(
             
             width = "2",
             
-            selectInput("bYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts"),
+            selectInput("bYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "MatchupScore"),
             selectInput("bXAxis","Choose the X Axis", choices = c("Status", "Team"), selected = "Status"),
             selectInput("bPlotType","Plot Type", choices = c("Box", "Violin"), selected = "Box"),
           ),
