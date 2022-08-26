@@ -141,12 +141,34 @@ teams$Opponent <- gsub("@","",as.character(teams$Opponent))
 teams$Opponent <- substr(teams$Opponent, start = 1, stop = 3)
 teams$OFPts.90 <- teams[match(teams$Opponent, teams$Team), "FPts.90"]
 teams$MatchupScore <- teams$FPts.90 / teams$OFPts.90
+
+
+#Have to center around 10th being neutral
+teams <- arrange(teams, MatchupScore)
+teams <- rowid_to_column(teams, "ID")
+teams$MatchupScore <- teams$ID
+teams$MatchupScore <- ((teams$MatchupScore - 10) / 15) + 1
+teams$MatchupScore <- ifelse(teams$MatchupScore > 1, ((teams$MatchupScore -1) / 2) + 1, teams$MatchupScore)
+
 teamDiff <- subset(teams, select = c(Team, MatchupScore))
-
-
 df <- merge(x = df, y = teamDiff)
 df$MatchupFP.G <- df$FP.G * df$MatchupScore
 df$MatchupFPts.90 <- df$FPts.90 * df$MatchupScore
+
+top10 <- subset(df, !(df$Status %in% statuses))
+top10 <- top10 %>%                                      
+  arrange(desc(MatchupFP.G)) %>% 
+  group_by(Status) %>%
+  slice(1:10)
+
+fTeams <- top10
+
+top10$Top10 <- 1
+top10 <- subset(top10, select = c(Player, Top10))
+df <- full_join(df, top10, by = "Player")
+df$Top10 <- ifelse(is.na(df$Top10), 0, df$Top10)
+
+
 
 # **************************************************
 
@@ -209,10 +231,25 @@ ui <- fluidPage(
             selectInput("bYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "MatchupScore"),
             selectInput("bXAxis","Choose the X Axis", choices = c("Status", "Team"), selected = "Status"),
             selectInput("bPlotType","Plot Type", choices = c("Box", "Violin"), selected = "Box"),
+            checkboxInput("bTop10", "Top 10 Only", value = FALSE, width = NULL)
           ),
           
           mainPanel(
             plotOutput(outputId = "box",width = "1500px", height = "900px")
+          )
+        )
+     ),
+     tabPanel("Prediction",
+        sidebarLayout(
+          
+          sidebarPanel(
+
+            width = "2",
+            
+          ),
+          
+          mainPanel(
+            DT::dataTableOutput("pTable")
           )
         )
      )
@@ -321,6 +358,10 @@ server <- function(input, output) {
     
     df_temp <- df
     
+    if(input$bTop10 == TRUE){
+      df_temp <- subset(df_temp, Top10 == 1)
+    }
+    
     if(input$bXAxis == "Status"){
       df_temp <- df_temp %>%  subset(Status != "W (Fri)" & Status != "W (Sat)" & Status != "W (Sun)" & 
                                        Status != "W (Mon)" & Status != "W (Tue)" & Status != "W (Wed)" &
@@ -360,6 +401,10 @@ server <- function(input, output) {
 
   })
   
+  output$pTable = DT::renderDataTable({
+    fTeams <- aggregate(MatchupFP.G ~ Status, fTeams, sum)
+    fTeams
+  })
 }
 
 shinyApp(ui, server)
