@@ -143,8 +143,13 @@ teams$OFPts.90 <- teams[match(teams$Opponent, teams$Team), "FPts.90"]
 teams$MatchupScore <- teams$FPts.90 / teams$OFPts.90
 
 
-#Have to center around 10th being neutral
-teams <- arrange(teams, MatchupScore)
+#New
+teams <- aggregate(FPts.90 ~ Team, df, median)
+teams$Opponent <- df[match(teams$Team, df[,"Team"]), "Opponent"]
+teams$Opponent <- gsub("@","",as.character(teams$Opponent))
+teams$Opponent <- substr(teams$Opponent, start = 1, stop = 3)
+teams$OFPts.90 <- teams[match(teams$Opponent, teams$Team), "FPts.90"]
+teams <- arrange(teams, desc(OFPts.90))
 teams <- rowid_to_column(teams, "ID")
 teams$MatchupScore <- teams$ID
 teams$MatchupScore <- ((teams$MatchupScore - 10) / 15) + 1
@@ -169,6 +174,12 @@ df <- full_join(df, top10, by = "Player")
 df$Top10 <- ifelse(is.na(df$Top10), 0, df$Top10)
 
 
+#Status aggregate scores
+temp1 <- aggregate(MatchupFP.G ~ Status, fTeams, sum)
+temp2 <- aggregate(FP.G ~ Status, fTeams, sum)
+temp3 <- aggregate(MatchupScore ~ Status, fTeams, mean)
+statusTable <- merge(x = temp1, y = temp2, by = "Status", all.x = TRUE)
+statusTable <- merge(x = statusTable, y = temp3, by = "Status", all.x = TRUE)
 
 # **************************************************
 
@@ -402,8 +413,7 @@ server <- function(input, output) {
   })
   
   output$pTable = DT::renderDataTable({
-    fTeams <- aggregate(MatchupFP.G ~ Status, fTeams, sum)
-    fTeams
+    DT::datatable(statusTable, options = list(pageLength = 15))
   })
 }
 
