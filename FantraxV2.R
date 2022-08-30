@@ -133,53 +133,22 @@ df <- mutate(df, KPMinusA.90 = round((((KP - A) / Min)*90),2))
 df <- mutate(df, xGPerf = G / xG)
 df <- mutate(df, xAPerf = A / xA)
 df <- mutate(df, xGPerfandxAPerf = xGPerf + xAPerf)
+df <- mutate(df, xG.90 = round(((xG / Min)*90),2))
+df <- mutate(df, xA.90 = round(((xA / Min)*90),2))
+df <- mutate(df, xGChain.90 = round(((xGChain / Min)*90),2))
+df <- mutate(df, xGBuildup.90 = round(((xGBuildup / Min)*90),2))
 
-#Team data
-teams <- aggregate(FPts.90 ~ Team, df, mean )
-teams$Opponent <- df[match(teams$Team, df[,"Team"]), "Opponent"]
-teams$Opponent <- gsub("@","",as.character(teams$Opponent))
-teams$Opponent <- substr(teams$Opponent, start = 1, stop = 3)
-teams$OFPts.90 <- teams[match(teams$Opponent, teams$Team), "FPts.90"]
-teams$MatchupScore <- teams$FPts.90 / teams$OFPts.90
-
-
-#New
-teams <- aggregate(FPts.90 ~ Team, df, median)
-teams$Opponent <- df[match(teams$Team, df[,"Team"]), "Opponent"]
-teams$Opponent <- gsub("@","",as.character(teams$Opponent))
-teams$Opponent <- substr(teams$Opponent, start = 1, stop = 3)
-teams$OFPts.90 <- teams[match(teams$Opponent, teams$Team), "FPts.90"]
-teams <- arrange(teams, desc(OFPts.90))
-teams <- rowid_to_column(teams, "ID")
-teams$MatchupScore <- teams$ID
-teams$MatchupScore <- ((teams$MatchupScore - 10) / 15) + 1
-teams$MatchupScore <- ifelse(teams$MatchupScore > 1, ((teams$MatchupScore -1) / 2) + 1, teams$MatchupScore)
-
-teamDiff <- subset(teams, select = c(Team, MatchupScore))
-df <- merge(x = df, y = teamDiff)
-df$MatchupFP.G <- df$FP.G * df$MatchupScore
-df$MatchupFPts.90 <- df$FPts.90 * df$MatchupScore
-
+#Mark the top 10 players for each Status by their regular FP.G score
 top10 <- subset(df, !(df$Status %in% statuses))
 top10 <- top10 %>%                                      
-  arrange(desc(MatchupFP.G)) %>% 
+  arrange(desc(FP.G)) %>% 
   group_by(Status) %>%
   slice(1:10)
-
-fTeams <- top10
-
 top10$Top10 <- 1
 top10 <- subset(top10, select = c(Player, Top10))
 df <- full_join(df, top10, by = "Player")
 df$Top10 <- ifelse(is.na(df$Top10), 0, df$Top10)
 
-
-#Status aggregate scores
-temp1 <- aggregate(MatchupFP.G ~ Status, fTeams, sum)
-temp2 <- aggregate(FP.G ~ Status, fTeams, sum)
-temp3 <- aggregate(MatchupScore ~ Status, fTeams, mean)
-statusTable <- merge(x = temp1, y = temp2, by = "Status", all.x = TRUE)
-statusTable <- merge(x = statusTable, y = temp3, by = "Status", all.x = TRUE)
 
 # **************************************************
 
@@ -198,12 +167,13 @@ ui <- fluidPage(
             selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(df$Team))), selected = "All"),
             selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(df$Status)), "Waiver"), selected = "All Available"),
             selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FPts.90"),
-            selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "SOTAndKP.90"),
+            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "KP.90"),
+            selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "xA.90"),
             sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
             sliderInput("pGamesPlayed", "Minimum Games Played", min = min(df$GP), max = max(df$GP), value = min(df$GP)),
             sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(df$FPts.90), max = max(df$FPts.90), value = min(df$FPts.90)),
-            checkboxInput("pAddLines", "Add Lines", value = FALSE, width = NULL)
+            checkboxInput("pAddLines", "Add Lines", value = FALSE, width = NULL),
+            checkboxInput("pTop10", "Top 10 Only", value = FALSE, width = NULL)
             
           ),
           
@@ -239,7 +209,7 @@ ui <- fluidPage(
             
             width = "2",
             
-            selectInput("bYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "MatchupScore"),
+            selectInput("bYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FP.G"),
             selectInput("bXAxis","Choose the X Axis", choices = c("Status", "Team"), selected = "Status"),
             selectInput("bPlotType","Plot Type", choices = c("Box", "Violin"), selected = "Box"),
             checkboxInput("bTop10", "Top 10 Only", value = FALSE, width = NULL)
@@ -247,20 +217,6 @@ ui <- fluidPage(
           
           mainPanel(
             plotOutput(outputId = "box",width = "1500px", height = "900px")
-          )
-        )
-     ),
-     tabPanel("Prediction",
-        sidebarLayout(
-          
-          sidebarPanel(
-
-            width = "2",
-            
-          ),
-          
-          mainPanel(
-            DT::dataTableOutput("pTable")
           )
         )
      )
@@ -274,6 +230,9 @@ server <- function(input, output) {
     df_temp <- filter(df_temp, Min.GP >= input$pMinMinsPerGP)
     df_temp <- filter(df_temp, GP >= input$pGamesPlayed)
     df_temp <- filter(df_temp, FPts.90 >= input$pMinFPts.90)
+    if (input$pTop10 == TRUE) {
+      df_temp <- subset(df_temp, Top10 == 1)
+    }
     if (input$pTeam != "All") {
       df_temp <- filter(df_temp, Team == input$pTeam)
     }
@@ -410,10 +369,6 @@ server <- function(input, output) {
       
     }
 
-  })
-  
-  output$pTable = DT::renderDataTable({
-    DT::datatable(statusTable, options = list(pageLength = 15))
   })
 }
 
