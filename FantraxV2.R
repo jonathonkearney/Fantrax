@@ -170,7 +170,7 @@ ui <- fluidPage(
             selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "KP.90"),
             selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "xA.90"),
             sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
-            sliderInput("pGamesPlayed", "Minimum Games Played", min = min(df$GP), max = max(df$GP), value = min(df$GP)),
+            sliderInput("pMinMins", "Minimum Total Minutes", min = min(df$Min), max = max(df$Min), value = min(df$Min)),
             sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(df$FPts.90), max = max(df$FPts.90), value = min(df$FPts.90)),
             checkboxInput("pAddLines", "Add Lines", value = FALSE, width = NULL),
             checkboxInput("pTop10", "Top 10 Only", value = FALSE, width = NULL)
@@ -193,7 +193,7 @@ ui <- fluidPage(
             selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(df$Status), "Waiver"), selected = "All"),
             selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
             sliderInput("tMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
-            sliderInput("tGamesPlayed", "Minimum Games Played", min = min(df$GP), max = max(df$GP), value = min(df$GP)),
+            sliderInput("tMinMins", "Minimum Total Minutes", min = min(df$Min), max = max(df$Min), value = min(df$Min)),
             pickerInput("tPicker", "Columns", choices = sort(names(df)), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE)
           ),
           
@@ -228,7 +228,7 @@ server <- function(input, output) {
   output$plot <- renderPlot({
     df_temp <- df
     df_temp <- filter(df_temp, Min.GP >= input$pMinMinsPerGP)
-    df_temp <- filter(df_temp, GP >= input$pGamesPlayed)
+    df_temp <- filter(df_temp, Min >= input$pMinMins)
     df_temp <- filter(df_temp, FPts.90 >= input$pMinFPts.90)
     if (input$pTop10 == TRUE) {
       df_temp <- subset(df_temp, Top10 == 1)
@@ -285,10 +285,9 @@ server <- function(input, output) {
   output$table = DT::renderDataTable({
     df_temp <- df
     df_temp <- filter(df_temp, Min.GP >= input$tMinMinsPerGP)
-    df_temp <- filter(df_temp, GP >= input$tGamesPlayed)
+    df_temp <- filter(df_temp, Min >= input$tMinMins)
     
     columns <- c("Player", "Team", "Status", "Position")
-    
     columns <- append(columns, input$tPicker)
     
     df_temp <- df_temp[, which((names(df_temp) %in% columns)==TRUE)]
