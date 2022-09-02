@@ -46,14 +46,8 @@ understat <- understat_team_players_stats(
     "https://understat.com/team/Wolverhampton_Wanderers/2022"
               ))
 
-#extract the Understate columns we want 
-understat <- understat %>% select(player_name, xG, xA, npxG, xGChain, xGBuildup)
-
 #change the Player column name so it matches df
 names(understat)[names(understat) == 'player_name'] <- 'Player'
-
-#Convert all special characters to raw characters
-understat$Player <- stri_trans_general(str = understat$Player, id = "Latin-ASCII")
 
 #specific player cleanups
 understat$Player[understat$Player == "N&#039;Golo Kante"] <- "N'Golo Kante"
@@ -61,7 +55,7 @@ understat$Player[understat$Player == "Lewis O&#039;Brien"] <- "Lewis O'Brien"
 understat$Player[understat$Player == "Rayan Ait Nouri"] <- "Rayan Ait-Nouri"
 understat$Player[understat$Player == "Josh Dasilva"] <- "Pelenda Joshua Da Silva"
 understat$Player[understat$Player == "Hee-Chan Hwang"] <- "Hwang Hee-Chan"
-understat$Player[understat$Player == "Emerson"] <- "Emerson Royal"
+understat$Player[understat$Player == "Emerson" & understat$team_name == "Tottenham"] <- "Emerson Royal"
 understat$Player[understat$Player == "Bobby Reid"] <- "Bobby De Cordova-Reid"
 understat$Player[understat$Player == "Ezri Konsa Ngoyo"] <- "Ezri Konsa"
 understat$Player[understat$Player == "Gabriel"] <- "Gabriel Magalhaes"
@@ -70,6 +64,11 @@ understat$Player[understat$Player == "Thiago Alcantara"] <- "Thiago"
 understat$Player[understat$Player == "Emile Smith-Rowe"] <- "Emile Smith Rowe"
 understat$Player[understat$Player == "Estupinan"] <- "Pervis Estupinan"
 
+#extract the Understate columns we want 
+understat <- understat %>% select(Player, xG, xA, npxG, xGChain, xGBuildup)
+
+#Convert all special characters to raw characters
+understat$Player <- stri_trans_general(str = understat$Player, id = "Latin-ASCII")
 
 #merge the two tables
 df <- merge(x = df, y = understat, by = "Player", all.x = TRUE)
@@ -135,8 +134,11 @@ df <- mutate(df, xAPerf = A / xA)
 df <- mutate(df, xGPerfandxAPerf = xGPerf + xAPerf)
 df <- mutate(df, xG.90 = round(((xG / Min)*90),2))
 df <- mutate(df, xA.90 = round(((xA / Min)*90),2))
+df <- mutate(df, xA.90AndxG.90 = xG + xA)
 df <- mutate(df, xGChain.90 = round(((xGChain / Min)*90),2))
 df <- mutate(df, xGBuildup.90 = round(((xGBuildup / Min)*90),2))
+df <- mutate(df, xA.90Perf = A.90 - xA.90)
+df <- mutate(df, xG.90Perf = G.90 - xG.90)
 
 #Mark the top 10 players for each Status by their regular FP.G score
 top10 <- subset(df, !(df$Status %in% statuses))
@@ -148,6 +150,7 @@ top10$Top10 <- 1
 top10 <- subset(top10, select = c(Player, Top10))
 df <- full_join(df, top10, by = "Player")
 df$Top10 <- ifelse(is.na(df$Top10), 0, df$Top10)
+
 
 
 # **************************************************
@@ -167,8 +170,8 @@ ui <- fluidPage(
             selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(df$Team))), selected = "All"),
             selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(df$Status)), "Waiver"), selected = "All Available"),
             selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "KP.90"),
-            selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "xA.90"),
+            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "xA.90"),
+            selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "TkWAndIntAndCLR.90"),
             sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
             sliderInput("pMinMins", "Minimum Total Minutes", min = min(df$Min), max = max(df$Min), value = min(df$Min)),
             sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(df$FPts.90), max = max(df$FPts.90), value = min(df$FPts.90)),
@@ -339,7 +342,10 @@ server <- function(input, output) {
       if(input$bPlotType == "Box"){
         #input$fTeamY is a character, so you have to use get() in aes 
         ggplot(df_temp, aes(x = reorder(Status, get(input$bYAxis), FUN=mean), fill=Status)) + aes_string(y = input$bYAxis) +
-          geom_boxplot(coef = 5) + labs(x = "Teams")
+          geom_boxplot(coef = 5) + labs(x = "Teams") +
+          stat_summary(fun = mean, geom = "point", col = "white") +  # Add points to plot
+          stat_summary(fun = mean, geom = "text", col = "White",     # Add text to plot
+                       vjust = 1.5, aes(label = paste("Mean:", round(..y.., digits = 1))))
         
       } else {
         #input$fTeamY is a character, so you have to use get() in aes 
@@ -356,7 +362,10 @@ server <- function(input, output) {
       if(input$bPlotType == "Box"){
         #input$fTeamY is a character, so you have to use get() in aes 
         ggplot(df_temp, aes(x=reorder(Team, get(input$bYAxis), FUN=mean), get(input$bYAxis), fill=Team)) +
-          geom_boxplot(coef = 5) + labs(x = "Teams")
+          geom_boxplot(coef = 5) + labs(x = "Teams")  +
+          stat_summary(fun = mean, geom = "point", col = "white") +  # Add points to plot
+          stat_summary(fun = mean, geom = "text", col = "White",     # Add text to plot
+                       vjust = 1.5, aes(label = paste("Mean:", round(..y.., digits = 1))))
         
       } else {
         #input$fTeamY is a character, so you have to use get() in aes 
