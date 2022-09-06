@@ -287,8 +287,8 @@ server <- function(input, output) {
         check_overlap = F,
         adj = -0.1,
         vjust="inward"
-      ) +
-      coord_flip(clip = "off")
+      ) + coord_flip(clip = "off") +
+      geom_abline(intercept = c(0), slope = 1, color = c("black"), alpha=0.4)
     
     if(input$pAddLines == TRUE) {
       p + theme_classic() + geom_smooth(method="lm", se=F)
