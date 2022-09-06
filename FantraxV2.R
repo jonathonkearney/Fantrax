@@ -46,6 +46,8 @@ understat <- understat_team_players_stats(
     "https://understat.com/team/Wolverhampton_Wanderers/2022"
               ))
 
+
+
 #change the Player column name so it matches df
 names(understat)[names(understat) == 'player_name'] <- 'Player'
 
@@ -63,6 +65,10 @@ understat$Player[understat$Player == "Matthew Cash"] <- "Matty Cash"
 understat$Player[understat$Player == "Thiago Alcantara"] <- "Thiago"
 understat$Player[understat$Player == "Emile Smith-Rowe"] <- "Emile Smith Rowe"
 understat$Player[understat$Player == "Estupinan"] <- "Pervis Estupinan"
+
+#remove double ups (such as when a player moves team mid season)
+understat <- subset(understat, !(Player == "Morgan Gibbs-White" & team_name == "Wolverhampton Wanderers"))
+understat <- subset(understat, !(Player == "Wesley Fofana" & team_name == "Leicester"))
 
 #extract the Understate columns we want 
 understat <- understat %>% select(Player, xG, xA, npxG, xGChain, xGBuildup)
@@ -121,6 +127,13 @@ df <- mutate(df, GAD.90 = round(((GAD / Min)*90),2))
 df <- mutate(df, CSD.90 = round(((CSD / Min)*90),2))
 df <- mutate(df, CSM.90 = round(((CSM / Min)*90),2))
 
+#Potential
+df <- mutate(df, Potential = round((FPts.90 / FP.G),2))
+
+#Game Start Perc
+df <- mutate(df, GSPercentage = round((GS / max(df$GP)),2))
+df <- mutate(df, GPPercentage = round((GP / max(df$GP)),2))
+
 #new columns
 df <- mutate(df, Min.GP = round((Min / GP) ,2))
 df <- mutate(df, xGandxA = xG + xA)
@@ -152,7 +165,6 @@ df <- full_join(df, top10, by = "Player")
 df$Top10 <- ifelse(is.na(df$Top10), 0, df$Top10)
 
 
-
 # **************************************************
 
 ui <- fluidPage(
@@ -170,11 +182,12 @@ ui <- fluidPage(
             selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(df$Team))), selected = "All"),
             selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(df$Status)), "Waiver"), selected = "All Available"),
             selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "xA.90"),
-            selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "TkWAndIntAndCLR.90"),
+            selectInput("pYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "SFTP.90"),
+            selectInput("pXAxis","Choose the X Axis", choices = sort(names(df)), selected = "xA.90AndxG.90"),
             sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
             sliderInput("pMinMins", "Minimum Total Minutes", min = min(df$Min), max = max(df$Min), value = min(df$Min)),
             sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(df$FPts.90), max = max(df$FPts.90), value = min(df$FPts.90)),
+            sliderInput("pPCofGamesStarted", "% of Games Started", min = min(df$GSPercentage), max = max(df$GSPercentage), value = min(df$GSPercentage)),
             checkboxInput("pAddLines", "Add Lines", value = FALSE, width = NULL),
             checkboxInput("pTop10", "Top 10 Only", value = FALSE, width = NULL)
             
@@ -197,7 +210,8 @@ ui <- fluidPage(
             selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
             sliderInput("tMinMinsPerGP", "Minimum Minutes Per GP", min = min(df$Min.GP), max = max(df$Min.GP), value = min(df$Min.GP)),
             sliderInput("tMinMins", "Minimum Total Minutes", min = min(df$Min), max = max(df$Min), value = min(df$Min)),
-            pickerInput("tPicker", "Columns", choices = sort(names(df)), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE)
+            pickerInput("tPicker", "Columns", choices = sort(names(df)), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
+            sliderInput("tPCofGamesStarted", "% of Games Started", min = min(df$GSPercentage), max = max(df$GSPercentage), value = min(df$GSPercentage)),
           ),
           
           mainPanel(
@@ -233,6 +247,7 @@ server <- function(input, output) {
     df_temp <- filter(df_temp, Min.GP >= input$pMinMinsPerGP)
     df_temp <- filter(df_temp, Min >= input$pMinMins)
     df_temp <- filter(df_temp, FPts.90 >= input$pMinFPts.90)
+    df_temp <- filter(df_temp, GSPercentage >= input$pPCofGamesStarted)
     if (input$pTop10 == TRUE) {
       df_temp <- subset(df_temp, Top10 == 1)
     }
@@ -289,6 +304,7 @@ server <- function(input, output) {
     df_temp <- df
     df_temp <- filter(df_temp, Min.GP >= input$tMinMinsPerGP)
     df_temp <- filter(df_temp, Min >= input$tMinMins)
+    df_temp <- filter(df_temp, df$GSPercentage >= input$tPCofGamesStarted)
     
     columns <- c("Player", "Team", "Status", "Position")
     columns <- append(columns, input$tPicker)
