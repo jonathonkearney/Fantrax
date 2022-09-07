@@ -177,12 +177,6 @@ teams$MatchupScore <- ifelse(teams$MatchupScore > 10, teams$MatchupScore - 11, i
 teams <- subset(teams, select = -c(AVGFPts.90))
 df <- inner_join(df, teams, by = "Opponent")
 
-#Fantrax Teams Table
-fTeams <- aggregate(df$MatchupScore, by=list(Status=df$Status), FUN=sum)
-colnames(fTeams) <- c("Status", "MatchupScore")
-fTeams <- subset(fTeams, !(Status %in% statuses))
-
-
 # **************************************************
 
 ui <- fluidPage(
@@ -244,7 +238,7 @@ ui <- fluidPage(
             
             width = "2",
             
-            selectInput("bYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "FP.G"),
+            selectInput("bYAxis","Choose the Y Axis", choices = sort(names(df)), selected = "MatchupScore"),
             selectInput("bXAxis","Choose the X Axis", choices = c("Status", "Team"), selected = "Status"),
             selectInput("bPlotType","Plot Type", choices = c("Box", "Violin"), selected = "Box"),
             checkboxInput("bTop10", "Top 10 Only", value = FALSE, width = NULL)
@@ -254,20 +248,6 @@ ui <- fluidPage(
             plotOutput(outputId = "box",width = "1500px", height = "900px")
           )
         )
-     ),
-     tabPanel("Fantrax Teams",
-              sidebarLayout(
-                
-                sidebarPanel(
-                  
-                  width = "2",
-                  
-                ),
-                
-                mainPanel(
-                  DT::dataTableOutput("fTable")
-                )
-              )
      )
   )
 )
@@ -427,9 +407,6 @@ server <- function(input, output) {
 
   })
   
-  output$fTable = DT::renderDataTable({
-    DT::datatable(fTeams, options = list(pageLength = 13))
-  })
 }
 
 shinyApp(ui, server)
