@@ -153,6 +153,10 @@ df <- mutate(df, xGBuildup.90 = round(((xGBuildup / Min)*90),2))
 df <- mutate(df, xA.90Perf = A.90 - xA.90)
 df <- mutate(df, xG.90Perf = G.90 - xG.90)
 
+#Split out Opponent and HomeAway
+df$HomeOrAway <- ifelse(startsWith(df$Opponent, "@"), "Away", "Home")
+df$Opponent <- ifelse(startsWith(df$Opponent, "@"), substring(df$Opponent,2,4), substring(df$Opponent,1,3))
+
 #Mark the top 10 players for each Status by their regular FP.G score
 top10 <- subset(df, !(df$Status %in% statuses))
 top10 <- top10 %>%                                      
@@ -163,6 +167,20 @@ top10$Top10 <- 1
 top10 <- subset(top10, select = c(Player, Top10))
 df <- full_join(df, top10, by = "Player")
 df$Top10 <- ifelse(is.na(df$Top10), 0, df$Top10)
+
+#Matchup Scores
+teams <- aggregate(df$FPts.90, by=list(Opponent=df$Team), FUN=mean) #AVG FPTs.90 seems the fairest?
+colnames(teams) <- c("Opponent", "AVGFPts.90")
+teams <- teams[order(-teams$AVGFPts.90),]
+teams <- tibble::rowid_to_column(teams, "MatchupScore")
+teams$MatchupScore <- ifelse(teams$MatchupScore > 10, teams$MatchupScore - 11, ifelse(teams$MatchupScore < 10, teams$MatchupScore - 10, 0))
+teams <- subset(teams, select = -c(AVGFPts.90))
+df <- inner_join(df, teams, by = "Opponent")
+
+#Fantrax Teams Table
+fTeams <- aggregate(df$MatchupScore, by=list(Status=df$Status), FUN=sum)
+colnames(fTeams) <- c("Status", "MatchupScore")
+fTeams <- subset(fTeams, !(Status %in% statuses))
 
 
 # **************************************************
@@ -236,6 +254,20 @@ ui <- fluidPage(
             plotOutput(outputId = "box",width = "1500px", height = "900px")
           )
         )
+     ),
+     tabPanel("Fantrax Teams",
+              sidebarLayout(
+                
+                sidebarPanel(
+                  
+                  width = "2",
+                  
+                ),
+                
+                mainPanel(
+                  DT::dataTableOutput("fTable")
+                )
+              )
      )
   )
 )
@@ -393,6 +425,10 @@ server <- function(input, output) {
       
     }
 
+  })
+  
+  output$fTable = DT::renderDataTable({
+    DT::datatable(fTeams, options = list(pageLength = 13))
   })
 }
 
