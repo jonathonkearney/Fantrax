@@ -225,6 +225,12 @@ top10 <- subset(top10, select = c(Player, Top10))
 overall <- full_join(overall, top10, by = "Player")
 overall$Top10 <- ifelse(is.na(overall$Top10), 0, overall$Top10)
 
+test <- aggregate(overall$FP.G.SD, by=list(overall$Status), FUN=mean)
+
+temp <- subset(overall, Status == "ratzzz")
+
+test2 <- sd(overall$FP.G.SD, na.rm = TRUE)
+
 #[TODO] - How many of the last x games have they played
 
 
@@ -247,8 +253,8 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(overall$Status)), "Waiver"), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FPts.90"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FPts.90.SD"),
+                          selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FP.G"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FP.G.SD"),
                           sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.GP), max = max(overall$Min.GP), value = min(overall$Min.GP)),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min), max = max(overall$Min), value = min(overall$Min)),
                           sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(overall$FPts.90), max = max(overall$FPts.90), value = min(overall$FPts.90)),
@@ -410,6 +416,11 @@ server <- function(input, output) {
   output$box <- renderPlot({
     
     df_temp <- overall
+    
+    #If input$bYAxis ends with "SD" then filter out all NAs
+    if(str_sub(input$bYAxis, start= -2) == "SD"){
+      df_temp <- df_temp[!is.na(df_temp[[input$bYAxis]]), ]
+    }
     
     if(input$bTop10 == TRUE){
       df_temp <- subset(df_temp, Top10 == 1)
