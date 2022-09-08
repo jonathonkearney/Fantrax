@@ -214,6 +214,9 @@ overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(TkWAndIntAndCLR.90.SD = sd(TkWAndIntAndCLR.90, na.rm = TRUE)), by = "Player")
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SOTAndKP.90.SD = sd(SOTAndKP.90, na.rm = TRUE)), by = "Player")
 
+#create the LQ (lower Quartile) columns
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FP.G.LQ = quantile(FP.G, prob = c(.25), na.rm = TRUE)), by = "Player")
+
 #Mark the top 10 players for each Status by their regular FP.G score
 top10 <- subset(overall, !(overall$Status %in% statuses))
 top10 <- top10 %>%                                      
@@ -225,11 +228,7 @@ top10 <- subset(top10, select = c(Player, Top10))
 overall <- full_join(overall, top10, by = "Player")
 overall$Top10 <- ifelse(is.na(overall$Top10), 0, overall$Top10)
 
-test <- aggregate(overall$FP.G.SD, by=list(overall$Status), FUN=mean)
-
-temp <- subset(overall, Status == "ratzzz")
-
-test2 <- sd(overall$FP.G.SD, na.rm = TRUE)
+test <- quantile(c(1,2,3,4,5), prob = c(.25))
 
 #[TODO] - How many of the last x games have they played
 
@@ -377,7 +376,7 @@ server <- function(input, output) {
     df_temp <- filter(df_temp, Min >= input$tMinMins)
     df_temp <- filter(df_temp, overall$GSPercentage >= input$tPCofGamesStarted)
     
-    columns <- c("Player", "Team", "Status", "Position")
+    columns <- c("Player", "Team", "Status", "Position", "FP.G", "FP.G.SD", "FPts.90", "G", "A", "GSPercentage")
     columns <- append(columns, input$tPicker)
     
     df_temp <- df_temp[, which((names(df_temp) %in% columns)==TRUE)]
@@ -417,6 +416,8 @@ server <- function(input, output) {
     
     df_temp <- overall
     
+    #If a player has only played one game then they wil have NAs for all their SD columns
+    #This messes up box plots, specifically their order
     #If input$bYAxis ends with "SD" then filter out all NAs
     if(str_sub(input$bYAxis, start= -2) == "SD"){
       df_temp <- df_temp[!is.na(df_temp[[input$bYAxis]]), ]
