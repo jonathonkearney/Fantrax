@@ -145,6 +145,7 @@ gws <- lapply(gws, function(x) subset(x, Min != 0))
 #Create the SD columns
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Min.SD = sd(Min, na.rm = TRUE)), by = "Player")
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FPts.SD = sd(FPts, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FP.G.SD = sd(FP.G, na.rm = TRUE)), by = "Player")
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(G.SD = sd(G, na.rm = TRUE)), by = "Player")
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(A.SD = sd(A, na.rm = TRUE)), by = "Player")
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Pts.SD = sd(Pts, na.rm = TRUE)), by = "Player")
@@ -224,6 +225,11 @@ top10 <- subset(top10, select = c(Player, Top10))
 overall <- full_join(overall, top10, by = "Player")
 overall$Top10 <- ifelse(is.na(overall$Top10), 0, overall$Top10)
 
+#[TODO] - How many of the last x games have they played
+
+
+#[TODO] - How are they trending, FPts etc
+
 # **************************************************
 
 ui <- fluidPage(
@@ -242,7 +248,7 @@ ui <- fluidPage(
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(overall$Status)), "Waiver"), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FPts.90"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FPts.SD"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FPts.90.SD"),
                           sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.GP), max = max(overall$Min.GP), value = min(overall$Min.GP)),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min), max = max(overall$Min), value = min(overall$Min)),
                           sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(overall$FPts.90), max = max(overall$FPts.90), value = min(overall$FPts.90)),
@@ -285,7 +291,7 @@ ui <- fluidPage(
                           
                           width = "2",
                           
-                          selectInput("bYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "MatchupScore"),
+                          selectInput("bYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FP.G.SD"),
                           selectInput("bXAxis","Choose the X Axis", choices = c("Status", "Team"), selected = "Status"),
                           selectInput("bPlotType","Plot Type", choices = c("Box", "Violin"), selected = "Box"),
                           checkboxInput("bTop10", "Top 10 Only", value = FALSE, width = NULL)
