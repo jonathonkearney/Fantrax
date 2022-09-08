@@ -135,6 +135,13 @@ overall <- mutate(overall, CoSMinusDIS.90 = round((((CoS - DIS) / Min)*90),2))
 overall <- mutate(overall, SOTMinusG.90 = round((((SOT - G) / Min)*90),2))
 overall <- mutate(overall, KPMinusA.90 = round((((KP - A) / Min)*90),2))
 
+test <- bind_rows(gws) %>% group_by(Player) %>% summarise(Min.SD = sd(Min, na.rm = TRUE))
+
+#When a player doesnt play it gives 0's for everything and those 0's are counted in the SD, which is not ideal
+#Remove the row if they didnt play e.g. Min == 0
+gws <- lapply(gws, function(x) subset(x, Min != 0))
+
+
 #Create the SD columns
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Min.SD = sd(Min, na.rm = TRUE)), by = "Player")
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FPts.SD = sd(FPts, na.rm = TRUE)), by = "Player")
