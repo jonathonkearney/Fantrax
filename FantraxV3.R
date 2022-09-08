@@ -178,6 +178,40 @@ overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CSM.SD = sd(CSM, na.rm = TRUE)), by = "Player")
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(TkWAndIntAndCLR.SD = sd(TkWAndIntAndCLR, na.rm = TRUE)), by = "Player")
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SOTAndKP.SD = sd(SOTAndKP, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FPts.90.SD = sd(FPts.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(G.90.SD = sd(G.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(A.90.SD = sd(A.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Pts.90.SD = sd(Pts.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(S.90.SD = sd(S.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SOT.90.SD = sd(SOT.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FC.90.SD = sd(FC.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FS.90.SD = sd(FS.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(YC.90.SD = sd(YC.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(RC.90.SD = sd(RC.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(DPt.90.SD = sd(DPt.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Off.90.SD = sd(Off.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(PKG.90.SD = sd(PKG.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CS.90.SD = sd(CS.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(A2.90.SD = sd(A2.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(KP.90.SD = sd(KP.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(AT.90.SD = sd(AT.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(TkW.90.SD = sd(TkW.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(DIS.90.SD = sd(DIS.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(ErG.90.SD = sd(ErG.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(AP.90.SD = sd(AP.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SFTP.90.SD = sd(SFTP.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(ACNC.90.SD = sd(ACNC.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Int.90.SD = sd(Int.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CLR.90.SD = sd(CLR.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CoS.90.SD = sd(CoS.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(AER.90.SD = sd(AER.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(PKM.90.SD = sd(PKM.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(OG.90.SD = sd(OG.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(GAD.90.SD = sd(GAD.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CSD.90.SD = sd(CSD.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CSM.90.SD = sd(CSM.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(TkWAndIntAndCLR.90.SD = sd(TkWAndIntAndCLR.90, na.rm = TRUE)), by = "Player")
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SOTAndKP.90.SD = sd(SOTAndKP.90, na.rm = TRUE)), by = "Player")
 
 #Mark the top 10 players for each Status by their regular FP.G score
 top10 <- subset(overall, !(overall$Status %in% statuses))
@@ -207,8 +241,8 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(overall$Status)), "Waiver"), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "SFTP.90"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "KP.90"),
+                          selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FPts.90"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FPts.SD"),
                           sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.GP), max = max(overall$Min.GP), value = min(overall$Min.GP)),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min), max = max(overall$Min), value = min(overall$Min)),
                           sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(overall$FPts.90), max = max(overall$FPts.90), value = min(overall$FPts.90)),
