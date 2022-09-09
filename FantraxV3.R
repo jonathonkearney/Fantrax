@@ -374,7 +374,12 @@ server <- function(input, output) {
     df_temp <- overall
     df_temp <- filter(df_temp, Min.GP >= input$tMinMinsPerGP)
     df_temp <- filter(df_temp, Min >= input$tMinMins)
-    df_temp <- filter(df_temp, overall$GSPercentage >= input$tPCofGamesStarted)
+    df_temp <- filter(df_temp, df_temp$GSPercentage >= input$tPCofGamesStarted)
+    
+    # test <- overall
+    # test <- filter(test, Min.GP >= 60)
+    # test <- filter(test, Min >= 90)
+    # test <- filter(test, test$GSPercentage >= 0)
     
     columns <- c("Player", "Team", "Status", "Position", "FP.G", "FP.G.SD", "FPts.90", "G", "A", "GSPercentage")
     columns <- append(columns, input$tPicker)
