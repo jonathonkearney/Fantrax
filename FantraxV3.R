@@ -5,6 +5,7 @@ library(DT)
 library(rvest)
 library(stringi)
 library(shinyWidgets)
+library(forecast)
 
 # **************************************************
 rm(list = ls())
@@ -42,177 +43,69 @@ overall$Min <- as.numeric(as.character(overall$Min))
 overall$AP <- as.numeric(gsub("\\,", "", overall$AP))
 overall$AP <- as.numeric(as.character(overall$AP))
 
-#add in the .90 columns
-gws <- lapply(gws, function(x) mutate(x, FPts.90 = round(((FPts / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, G.90 = round(((G / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, A.90 = round(((A / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, Pts.90 = round(((Pts / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, S.90 = round(((S / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, SOT.90 = round(((SOT / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, FC.90 = round(((FC / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, FS.90 = round(((FS / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, YC.90 = round(((YC / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, RC.90 = round(((RC / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, DPt.90 = round(((DPt / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, Off.90 = round(((Off / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, PKG.90 = round(((PKG / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, CS.90 = round(((CS / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, A2.90 = round(((A2 / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, KP.90 = round(((KP / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, AT.90 = round(((AT / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, TkW.90 = round(((TkW / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, DIS.90 = round(((DIS / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, ErG.90 = round(((ErG / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, ErG.90 = round(((ErG / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, AP.90 = round(((AP / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, SFTP.90 = round(((SFTP / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, ACNC.90 = round(((ACNC / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, Int.90 = round(((Int / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, CLR.90 = round(((CLR / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, CoS.90 = round(((CoS / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, AER.90 = round(((AER / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, PKM.90 = round(((PKM / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, OG.90 = round(((OG / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, GAD.90 = round(((GAD / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, CSD.90 = round(((CSD / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, CSM.90 = round(((CSM / Min)*90),2)))
-overall <- mutate(overall, FPts.90 = round(((FPts / Min)*90),2))
-overall <- mutate(overall, G.90 = round(((G / Min)*90),2))
-overall <- mutate(overall, A.90 = round(((A / Min)*90),2))
-overall <- mutate(overall, Pts.90 = round(((Pts / Min)*90),2))
-overall <- mutate(overall, S.90 = round(((S / Min)*90),2))
-overall <- mutate(overall, SOT.90 = round(((SOT / Min)*90),2))
-overall <- mutate(overall, FC.90 = round(((FC / Min)*90),2))
-overall <- mutate(overall, FS.90 = round(((FS / Min)*90),2))
-overall <- mutate(overall, YC.90 = round(((YC / Min)*90),2))
-overall <- mutate(overall, RC.90 = round(((RC / Min)*90),2))
-overall <- mutate(overall, DPt.90 = round(((DPt / Min)*90),2))
-overall <- mutate(overall, Off.90 = round(((Off / Min)*90),2))
-overall <- mutate(overall, PKG.90 = round(((PKG / Min)*90),2))
-overall <- mutate(overall, CS.90 = round(((CS / Min)*90),2))
-overall <- mutate(overall, A2.90 = round(((A2 / Min)*90),2))
-overall <- mutate(overall, KP.90 = round(((KP / Min)*90),2))
-overall <- mutate(overall, AT.90 = round(((AT / Min)*90),2))
-overall <- mutate(overall, TkW.90 = round(((TkW / Min)*90),2))
-overall <- mutate(overall, DIS.90 = round(((DIS / Min)*90),2))
-overall <- mutate(overall, ErG.90 = round(((ErG / Min)*90),2))
-overall <- mutate(overall, AP.90 = round(((AP / Min)*90),2))
-overall <- mutate(overall, SFTP.90 = round(((SFTP / Min)*90),2))
-overall <- mutate(overall, ACNC.90 = round(((ACNC / Min)*90),2))
-overall <- mutate(overall, Int.90 = round(((Int / Min)*90),2))
-overall <- mutate(overall, CLR.90 = round(((CLR / Min)*90),2))
-overall <- mutate(overall, CoS.90 = round(((CoS / Min)*90),2))
-overall <- mutate(overall, AER.90 = round(((AER / Min)*90),2))
-overall <- mutate(overall, PKM.90 = round(((PKM / Min)*90),2))
-overall <- mutate(overall, OG.90 = round(((OG / Min)*90),2))
-overall <- mutate(overall, GAD.90 = round(((GAD / Min)*90),2))
-overall <- mutate(overall, CSD.90 = round(((CSD / Min)*90),2))
-overall <- mutate(overall, CSM.90 = round(((CSM / Min)*90),2))
+#new columns
+gws <- lapply(gws, function(x) mutate(x, TkWAndIntAndCLR = TkW + Int + CLR))
+gws <- lapply(gws, function(x) mutate(x, SOTAndKP = SOT + KP))
+gws <- lapply(gws, function(x) mutate(x, Min.GP = round((Min / GP) ,2)))
+gws <- lapply(gws, function(x) mutate(x, CoSMinusDIS = CoS - DIS))
+gws <- lapply(gws, function(x) mutate(x, SOTMinusG = SOT - G))
+gws <- lapply(gws, function(x) mutate(x, KPMinus = KP - A))
+overall <- mutate(overall, GSPercentage = round((GS / max(overall$GP)),2))
+overall <- mutate(overall, GPPercentage = round((GP / max(overall$GP)),2))
+overall <- mutate(overall, TkWAndIntAndCLR = TkW + Int + CLR)
+overall <- mutate(overall, SOTAndKP = SOT + KP)
+overall <- mutate(overall, Min.GP = round((Min / GP) ,2))
+overall <- mutate(overall, CoSMinusDIS = CoS - DIS)
+overall <- mutate(overall, SOTMinusG = SOT - G)
+overall <- mutate(overall, KPMinus = KP - A)
+
+
+#Dynamically create last5 columns
+last5Columns <-  c("FPts", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
+                   "AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int", "PKG",
+                   "CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",         
+                   "A", "FC", "FS", "DPt", "Off", "PKG", "CS", "TkWAndIntAndCLR",
+                   "SOTAndKP", "Min.GP", "CoSMinusDIS", "SOTMinusG", "KPMinus")
+
+for (i in last5Columns) {
+  #.l5
+}
+
+#Dynamically create .90 columns
+per90Columns <-  c("FPts", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
+"AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int", "PKG",
+"CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",         
+"A", "FC", "FS", "DPt", "Off", "PKG", "CS",  "TkWAndIntAndCLR",
+"SOTAndKP", "Min.GP", "CoSMinusDIS", "SOTMinusG", "KPMinus")
+
+for (i in per90Columns) {
+  gws <- lapply(gws, function(x) mutate(x, "{i}.90" := round(((x[[i]] / Min)*90),2)))
+  overall <- mutate(overall, "{i}.90" := round(((overall[[i]] / Min)*90),2))
+}
 
 #Potential
 gws <- lapply(gws, function(x) mutate(x, Potential = round((FPts.90 / FP.G),2)))
 overall <- mutate(overall, Potential = round((FPts.90 / FP.G),2))
 
-#Game Start Perc
-gws <- lapply(gws, function(x) mutate(x, GSPercentage = round((GS / max(overall$GP)),2)))
-gws <- lapply(gws, function(x) mutate(x, GPPercentage = round((GP / max(overall$GP)),2)))
-overall <- mutate(overall, GSPercentage = round((GS / max(overall$GP)),2))
-overall <- mutate(overall, GPPercentage = round((GP / max(overall$GP)),2))
-
-#new columns
-gws <- lapply(gws, function(x) mutate(x, TkWAndIntAndCLR = TkW + Int + CLR))
-gws <- lapply(gws, function(x) mutate(x, SOTAndKP = SOT + KP))
-gws <- lapply(gws, function(x) mutate(x, Min.GP = round((Min / GP) ,2)))
-gws <- lapply(gws, function(x) mutate(x, TkWAndIntAndCLR.90 = round((((TkW + Int + CLR) / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, SOTAndKP.90 = round((((SOT + KP) / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, CoSMinusDIS.90 = round((((CoS - DIS) / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, SOTMinusG.90 = round((((SOT - G) / Min)*90),2)))
-gws <- lapply(gws, function(x) mutate(x, KPMinusA.90 = round((((KP - A) / Min)*90),2)))
-overall <- mutate(overall, Min.GP = round((Min / GP) ,2))
-overall <- mutate(overall, TkWAndIntAndCLR.90 = round((((TkW + Int + CLR) / Min)*90),2))
-overall <- mutate(overall, SOTAndKP.90 = round((((SOT + KP) / Min)*90),2))
-overall <- mutate(overall, CoSMinusDIS.90 = round((((CoS - DIS) / Min)*90),2))
-overall <- mutate(overall, SOTMinusG.90 = round((((SOT - G) / Min)*90),2))
-overall <- mutate(overall, KPMinusA.90 = round((((KP - A) / Min)*90),2))
-
-test <- bind_rows(gws) %>% group_by(Player) %>% summarise(Min.SD = sd(Min, na.rm = TRUE))
-
 #When a player doesnt play it gives 0's for everything and those 0's are counted in the SD, which is not ideal
 #Remove the row if they didnt play e.g. Min == 0
 gws <- lapply(gws, function(x) subset(x, Min != 0))
 
+#Dynamically create SD columns
+SDColumns <-  c("Min", "FPts", "FP.G", "G", "A", "Pts", "S", "SOT", "FC", "FS", "YC",
+                "RC", "DPt", "Off", "PKG", "CS", "A2", "KP",
+                "AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int", "PKG",
+                "CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",         
+                "TkWAndIntAndCLR", "SOTAndKP", 
+                "FPts.90", "G.90", "A.90", "Pts.90", "S.90", "SOT.90", "FC.90", "FS.90", "YC.90",
+                "RC.90", "DPt.90", "Off.90", "CS.90", "A2.90", "KP.90",
+                "AT.90", "TkW.90", "DIS.90", "ErG.90", "AP.90", "SFTP.90", "ACNC.90", "Int.90", "PKG.90",
+                "CLR.90", "CoS.90", "AER.90", "PKM.90", "OG.90", "GAD.90", "CSD.90", "CSM.90",         
+                "TkWAndIntAndCLR", "SOTAndKP")
 
-#Create the SD columns
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Min.SD = sd(Min, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FPts.SD = sd(FPts, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FP.G.SD = sd(FP.G, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(G.SD = sd(G, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(A.SD = sd(A, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Pts.SD = sd(Pts, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(S.SD = sd(S, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SOT.SD = sd(SOT, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FC.SD = sd(FC, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FS.SD = sd(FS, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(YC.SD = sd(YC, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(RC.SD = sd(RC, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(DPt.SD = sd(DPt, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Off.SD = sd(Off, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(PKG.SD = sd(PKG, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CS.SD = sd(CS, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(A2.SD = sd(A2, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(KP.SD = sd(KP, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(AT.SD = sd(AT, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(TkW.SD = sd(TkW, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(DIS.SD = sd(DIS, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(ErG.SD = sd(ErG, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(AP.SD = sd(AP, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SFTP.SD = sd(SFTP, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(ACNC.SD = sd(ACNC, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Int.SD = sd(Int, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CLR.SD = sd(CLR, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CoS.SD = sd(CoS, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(AER.SD = sd(AER, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(PKM.SD = sd(PKM, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(OG.SD = sd(OG, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(GAD.SD = sd(GAD, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CSD.SD = sd(CSD, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CSM.SD = sd(CSM, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(TkWAndIntAndCLR.SD = sd(TkWAndIntAndCLR, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SOTAndKP.SD = sd(SOTAndKP, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FPts.90.SD = sd(FPts.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(G.90.SD = sd(G.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(A.90.SD = sd(A.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Pts.90.SD = sd(Pts.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(S.90.SD = sd(S.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SOT.90.SD = sd(SOT.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FC.90.SD = sd(FC.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FS.90.SD = sd(FS.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(YC.90.SD = sd(YC.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(RC.90.SD = sd(RC.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(DPt.90.SD = sd(DPt.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Off.90.SD = sd(Off.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(PKG.90.SD = sd(PKG.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CS.90.SD = sd(CS.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(A2.90.SD = sd(A2.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(KP.90.SD = sd(KP.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(AT.90.SD = sd(AT.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(TkW.90.SD = sd(TkW.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(DIS.90.SD = sd(DIS.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(ErG.90.SD = sd(ErG.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(AP.90.SD = sd(AP.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SFTP.90.SD = sd(SFTP.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(ACNC.90.SD = sd(ACNC.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(Int.90.SD = sd(Int.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CLR.90.SD = sd(CLR.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CoS.90.SD = sd(CoS.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(AER.90.SD = sd(AER.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(PKM.90.SD = sd(PKM.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(OG.90.SD = sd(OG.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(GAD.90.SD = sd(GAD.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CSD.90.SD = sd(CSD.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(CSM.90.SD = sd(CSM.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(TkWAndIntAndCLR.90.SD = sd(TkWAndIntAndCLR.90, na.rm = TRUE)), by = "Player")
-overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(SOTAndKP.90.SD = sd(SOTAndKP.90, na.rm = TRUE)), by = "Player")
+for (i in SDColumns) {
+  overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise("{i}.SD" := sd(get(i), na.rm = TRUE)), by = "Player")
+}
 
 #create the LQ (lower Quartile) columns
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise(FP.G.LQ = quantile(FP.G, prob = c(.25), na.rm = TRUE)), by = "Player")
@@ -228,12 +121,6 @@ top10 <- subset(top10, select = c(Player, Top10))
 overall <- full_join(overall, top10, by = "Player")
 overall$Top10 <- ifelse(is.na(overall$Top10), 0, overall$Top10)
 
-test <- quantile(c(1,2,3,4,5), prob = c(.25))
-
-#[TODO] - How many of the last x games have they played
-
-
-#[TODO] - How are they trending, FPts etc
 
 # **************************************************
 
@@ -375,11 +262,6 @@ server <- function(input, output) {
     df_temp <- filter(df_temp, Min.GP >= input$tMinMinsPerGP)
     df_temp <- filter(df_temp, Min >= input$tMinMins)
     df_temp <- filter(df_temp, df_temp$GSPercentage >= input$tPCofGamesStarted)
-    
-    # test <- overall
-    # test <- filter(test, Min.GP >= 60)
-    # test <- filter(test, Min >= 90)
-    # test <- filter(test, test$GSPercentage >= 0)
     
     columns <- c("Player", "Team", "Status", "Position", "FP.G", "FP.G.SD", "FPts.90", "G", "A", "GSPercentage")
     columns <- append(columns, input$tPicker)
