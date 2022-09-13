@@ -20,6 +20,7 @@ gws <- list(
   merge(x = read.csv("FT_GW4.csv", header = TRUE), y = read.csv("FS_GW4.csv", header = TRUE)),
   merge(x = read.csv("FT_GW5.csv", header = TRUE), y = read.csv("FS_GW5.csv", header = TRUE)),
   merge(x = read.csv("FT_GW6.csv", header = TRUE), y = read.csv("FS_GW6.csv", header = TRUE))
+  # merge(x = read.csv("FT_GW7.csv", header = TRUE), y = read.csv("FS_GW7.csv", header = TRUE))
 )
 
 #create an overall dataframes
@@ -56,8 +57,6 @@ for (i in per90Columns) {
 }
 
 # *********************** CREATE OVERALL AND LAST5 DATAFRAMES ***************************
-
-#Test these by checking if sum() is the same
 
 #Use the latest GW as a starting template
 template <- as.data.frame(tail(gws, n=1))
@@ -328,12 +327,8 @@ server <- function(input, output) {
     }else{
       df_temp <- last5
     }
-    #If a player has only played one game then they wil have NAs for all their SD columns
-    #This messes up box plots, specifically their order
-    #If input$bYAxis ends with "SD" then filter out all NAs
-    if(str_sub(input$bYAxis, start= -2) == "SD"){
-      df_temp <- df_temp[!is.na(df_temp[[input$bYAxis]]), ]
-    }
+    #NAs mess up box plots, specifically their order, so we need to remove them
+    df_temp <- df_temp[!is.na(df_temp[[input$bYAxis]]), ]
     
     if(input$bTop10 == TRUE){
       df_temp <- subset(df_temp, Top10 == 1)
