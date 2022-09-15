@@ -46,15 +46,15 @@ gws <- lapply(gws, function(x) mutate(x, SOTMinusG = SOT - G))
 gws <- lapply(gws, function(x) mutate(x, KPMinusA = KP - A))
 
 #Dynamically create .90 columns to gws
-per90Columns <-  c("FPts", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
-"AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
-"CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",
-"A", "FC", "FS", "DPt", "Off", "CS",  "TkWAndIntAndCLR",
-"SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
-
-for (i in per90Columns) {
-  gws <- lapply(gws, function(x) mutate(x, "{i}.90" := round(((x[[i]] / Min)*90),2)))
-}
+# per90Columns <-  c("FPts", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
+# "AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
+# "CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",
+# "A", "FC", "FS", "DPt", "Off", "CS",  "TkWAndIntAndCLR",
+# "SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
+# 
+# for (i in per90Columns) {
+#   gws <- lapply(gws, function(x) mutate(x, "{i}.90" := round(((x[[i]] / Min)*90),2)))
+# }
 
 # *********************** CREATE OVERALL AND LAST5 DATAFRAMES ***************************
 
@@ -76,7 +76,13 @@ for (i in sumColumns) {
   last5 <- left_join(last5, bind_rows(tail(gws, n=5)) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
 }
 
-#Can't average out the gws .90 columns because that is mathmatically incorrect.
+#Dynamically create .90 columns 
+per90Columns <-  c("FPts", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
+"AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
+"CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",
+"A", "FC", "FS", "DPt", "Off", "CS",  "TkWAndIntAndCLR",
+"SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
+
 for (i in per90Columns) {
   overall <- mutate(overall, "{i}.90" := round(((get(i) / Min)*90),2))
   last5 <- mutate(last5, "{i}.90" := round(((get(i) / Min)*90),2))
@@ -89,28 +95,35 @@ last5 <- mutate(last5, Min.GP = round((Min / GP),2))
 overall <- mutate(overall, FP.G = round((FPts / GP),2))
 last5 <- mutate(last5, FP.G = round((FPts / GP),2))
 
-# *********************** ADD SD TO DATAFRAMES ***************************
+# *********************** ADD SD AND FLOOR/CEILING TO DATAFRAMES ***************************
 
 #Remove the row if they didnt play e.g. Min == 0 (because 0's mess up SD)
 gwsMinus0Min <- lapply(gws, function(x) subset(x, Min != 0))
 
 
-#Dynamically create SD columns
+#Dynamically create SD, Min, and Max columns
 SDColumns <-  c("Min", "Min.GP", "FPts", "FP.G", "G", "A", "Pts", "S", "SOT", "FC", "FS", "YC",
                 "RC", "DPt", "Off", "CS", "A2", "KP",
                 "AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
                 "CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",         
-                "TkWAndIntAndCLR", "SOTAndKP", 
-                "FPts.90", "G.90", "A.90", "Pts.90", "S.90", "SOT.90", "FC.90", "FS.90", "YC.90",
-                "RC.90", "DPt.90", "Off.90", "CS.90", "A2.90", "KP.90",
-                "AT.90", "TkW.90", "DIS.90", "ErG.90", "AP.90", "SFTP.90", "ACNC.90", "Int.90",
-                "CLR.90", "CoS.90", "AER.90", "PKM.90", "OG.90", "GAD.90", "CSD.90", "CSM.90",         
                 "TkWAndIntAndCLR", "SOTAndKP")
 
 for (i in SDColumns) {
   overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.SD" := sd(get(i), na.rm = TRUE)), by = "Player")
   last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.SD" := sd(get(i), na.rm = TRUE)), by = "Player")
+  
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Min" := min(get(i), na.rm = TRUE)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Min" := min(get(i), na.rm = TRUE)), by = "Player")
+  
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Max" := max(get(i), na.rm = TRUE)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Max" := max(get(i), na.rm = TRUE)), by = "Player")
 }
+
+#Add Floor/Ceiling. e.g. floor means 90% of results above it
+overall <- mutate(overall, FP.G.Floor = (FP.G - (FP.G.SD * 1.29)))
+last5 <- mutate(last5, FP.G.Floor = (FP.G - (FP.G.SD * 1.29)))
+overall <- mutate(overall, FP.G.Ceiling = (FP.G + (FP.G.SD * 1.29)))
+last5 <- mutate(last5, FP.G.Ceiling = (FP.G + (FP.G.SD * 1.29)))
 
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
 
