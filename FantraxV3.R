@@ -125,6 +125,14 @@ last5 <- mutate(last5, FP.G.Floor = (FP.G - (FP.G.SD * 1.29)))
 overall <- mutate(overall, FP.G.Ceiling = (FP.G + (FP.G.SD * 1.29)))
 last5 <- mutate(last5, FP.G.Ceiling = (FP.G + (FP.G.SD * 1.29)))
 
+#Standard Error - How far the sample mean is from the true mean
+overall <- mutate(overall, FP.G.SE = FP.G.SD / sqrt(GP))
+last5 <- mutate(last5, FP.G.SE = FP.G.SD / sqrt(GP))
+
+#Median - This should get more accurate as more GWs happen
+overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.Med = median(FP.G, na.rm = TRUE)), by = "Player")
+last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.Med = median(FP.G, na.rm = TRUE)), by = "Player")
+
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
 
 #Mark the top 10 players for each Status by their regular FP.G score
