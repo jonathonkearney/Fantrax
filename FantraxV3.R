@@ -5,7 +5,7 @@ library(DT)
 library(rvest)
 library(stringi)
 library(shinyWidgets)
-library(forecast)
+library(stats)
 
 # *********************** LOAD & CLEAN DATA ***************************
 rm(list = ls())
@@ -19,8 +19,9 @@ gws <- list(
   merge(x = read.csv("FT_GW3.csv", header = TRUE), y = read.csv("FS_GW3.csv", header = TRUE)),
   merge(x = read.csv("FT_GW4.csv", header = TRUE), y = read.csv("FS_GW4.csv", header = TRUE)),
   merge(x = read.csv("FT_GW5.csv", header = TRUE), y = read.csv("FS_GW5.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW6.csv", header = TRUE), y = read.csv("FS_GW6.csv", header = TRUE))
+  merge(x = read.csv("FT_GW6.csv", header = TRUE), y = read.csv("FS_GW6.csv", header = TRUE)),
   # merge(x = read.csv("FT_GW7.csv", header = TRUE), y = read.csv("FS_GW7.csv", header = TRUE))
+  merge(x = read.csv("FT_GW8.csv", header = TRUE), y = read.csv("FS_GW8.csv", header = TRUE)) #INCOMPLETE
 )
 
 #create an overall dataframes
@@ -129,13 +130,18 @@ last5 <- mutate(last5, FP.G.Ceiling = (FP.G + (FP.G.SD * 1.29)))
 overall <- mutate(overall, FP.G.SE = FP.G.SD / sqrt(GP))
 last5 <- mutate(last5, FP.G.SE = FP.G.SD / sqrt(GP))
 
-#Median - This should get more accurate as more GWs happen
+#Median - This should get more accurate as more GWs happen - Supposedly more accurate after 25 gameweeks
 overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.Med = median(FP.G, na.rm = TRUE)), by = "Player")
 last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.Med = median(FP.G, na.rm = TRUE)), by = "Player")
 
 #Lower Quartile - The Quartiles are apparently better for skewed distributions
 overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.LQ = quantile(FP.G, .25, na.rm = TRUE)), by = "Player")
 last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.LQ = quantile(FP.G, .25, na.rm = TRUE)), by = "Player")
+
+#Median Absolute Deviation - A SD but using the median
+overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.MAD = mad(FP.G, na.rm = TRUE)), by = "Player")
+last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.MAD = mad(FP.G, na.rm = TRUE)), by = "Player")
+
 
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
 
@@ -179,7 +185,7 @@ ui <- fluidPage(
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(overall$Status)), "Waiver"), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FP.G"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FP.G.SD"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FP.G.MAD"),
                           sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.GP, na.rm = TRUE), max = max(overall$Min.GP, na.rm = TRUE), value = min(overall$Min.GP, na.rm = TRUE)),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = min(overall$FPts.90, na.rm = TRUE)),
