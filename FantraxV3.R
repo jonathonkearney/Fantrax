@@ -95,7 +95,7 @@ last5 <- mutate(last5, Min.GP = round((Min / GP),2))
 overall <- mutate(overall, FP.G = round((FPts / GP),2))
 last5 <- mutate(last5, FP.G = round((FPts / GP),2))
 
-# *********************** ADD SD AND FLOOR/CEILING TO DATAFRAMES ***************************
+# *********************** ADD SD AND OTHER CALCULATIONS TO DATAFRAMES ***************************
 
 #Remove the row if they didnt play e.g. Min == 0 (because 0's mess up SD)
 gwsMinus0Min <- lapply(gws, function(x) subset(x, Min != 0))
@@ -132,6 +132,10 @@ last5 <- mutate(last5, FP.G.SE = FP.G.SD / sqrt(GP))
 #Median - This should get more accurate as more GWs happen
 overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.Med = median(FP.G, na.rm = TRUE)), by = "Player")
 last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.Med = median(FP.G, na.rm = TRUE)), by = "Player")
+
+#Lower Quartile - The Quartiles are apparently better for skewed distributions
+overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.LQ = quantile(FP.G, .25, na.rm = TRUE)), by = "Player")
+last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.LQ = quantile(FP.G, .25, na.rm = TRUE)), by = "Player")
 
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
 
