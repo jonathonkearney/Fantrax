@@ -46,17 +46,6 @@ gws <- lapply(gws, function(x) mutate(x, CoSMinusDIS = CoS - DIS))
 gws <- lapply(gws, function(x) mutate(x, SOTMinusG = SOT - G))
 gws <- lapply(gws, function(x) mutate(x, KPMinusA = KP - A))
 
-#Dynamically create .90 columns to gws
-# per90Columns <-  c("FPts", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
-# "AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
-# "CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",
-# "A", "FC", "FS", "DPt", "Off", "CS",  "TkWAndIntAndCLR",
-# "SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
-# 
-# for (i in per90Columns) {
-#   gws <- lapply(gws, function(x) mutate(x, "{i}.90" := round(((x[[i]] / Min)*90),2)))
-# }
-
 # *********************** CREATE OVERALL AND LAST5 DATAFRAMES ***************************
 
 #Use the latest GW as a starting template
@@ -141,6 +130,8 @@ last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player
 #Median Absolute Deviation - Median distance away from the median. needs the constant = 1
 overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.MAD = mad(FP.G, constant = 1, na.rm = TRUE)), by = "Player")
 last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.MAD = mad(FP.G, constant = 1, na.rm = TRUE)), by = "Player")
+
+#Could do MAD on .90 gw columns, because it removes outliers. 
 
 
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
