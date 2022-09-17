@@ -138,9 +138,9 @@ last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player
 overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.LQ = quantile(FP.G, .25, na.rm = TRUE)), by = "Player")
 last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.LQ = quantile(FP.G, .25, na.rm = TRUE)), by = "Player")
 
-#Median Absolute Deviation - A SD but using the median
-overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.MAD = mad(FP.G, na.rm = TRUE)), by = "Player")
-last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.MAD = mad(FP.G, na.rm = TRUE)), by = "Player")
+#Median Absolute Deviation - Median distance away from the median. needs the constant = 1
+overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.MAD = mad(FP.G, constant = 1, na.rm = TRUE)), by = "Player")
+last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.MAD = mad(FP.G, constant = 1, na.rm = TRUE)), by = "Player")
 
 
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
