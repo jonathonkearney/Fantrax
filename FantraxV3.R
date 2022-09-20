@@ -69,6 +69,7 @@ GWColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC", "R
                  "SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
 
 
+#SUM each (summable) GW column to create the overall/last 5 columns
 for (i in GWColumns) {
   overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
   last5 <- left_join(last5, bind_rows(tail(gws, n=5)) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
@@ -116,6 +117,7 @@ MADColumns <-  c("FPts.90", "G.90", "A.90", "Pts.90", "S.90", "SOT.90", "YC.90",
                    "FC.90", "FS.90", "DPt.90", "Off.90", "CS.90",  "TkWAndIntAndCLR.90",
                    "SOTAndKP.90", "CoSMinusDIS.90", "SOTMinusG.90", "KPMinusA.90")
 
+#Create MAD columns for the .90 metrics
 for (i in MADColumns) {
   overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise("{i}.MAD" := mad(get(i), constant = 1, na.rm = TRUE)), by = "Player")
   last5 <- left_join(last5, bind_rows(tail(gws, n=5)) %>% group_by(Player) %>% summarise("{i}.MAD" := mad(get(i), constant = 1, na.rm = TRUE)), by = "Player")
