@@ -24,9 +24,6 @@ gws <- list(
   merge(x = read.csv("FT_GW8.csv", header = TRUE), y = read.csv("FS_GW8.csv", header = TRUE)) #INCOMPLETE
 )
 
-#create an overall dataframes
-# OLDOverall <- merge(x = read.csv("FT.csv", header = TRUE), y = read.csv("FS.csv", header = TRUE))
-
 #Statuses
 statuses <- c("W (Mon)", "W (Tue)", "W (Wed)", "W (Thu)", "W (Fri)", "W (Sat)", "W (Sun)", "FA")
 
@@ -36,7 +33,7 @@ gws <- lapply(gws, function(x) mutate(x, Min = as.numeric(as.character(Min))))
 gws <- lapply(gws, function(x) mutate(x, AP = as.numeric(gsub("\\,", "", AP))))
 gws <- lapply(gws, function(x) mutate(x, AP = as.numeric(as.character(AP))))
 
-# *********************** ADD NEW COLUMNS ***************************
+# *********************** ADD NEW COLUMNS TO GW DATA ***************************
 
 #new columns
 gws <- lapply(gws, function(x) mutate(x, TkWAndIntAndCLR = TkW + Int + CLR))
@@ -46,6 +43,17 @@ gws <- lapply(gws, function(x) mutate(x, CoSMinusDIS = CoS - DIS))
 gws <- lapply(gws, function(x) mutate(x, SOTMinusG = SOT - G))
 gws <- lapply(gws, function(x) mutate(x, KPMinusA = KP - A))
 
+#Dynamically create .90 columns for the gws
+per90Columns <-  c("FPts", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
+                   "AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
+                   "CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",
+                   "FC", "FS", "DPt", "Off", "CS",  "TkWAndIntAndCLR",
+                   "SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
+
+for (i in per90Columns) {
+  gws <- lapply(gws, function(x) mutate(x, "{i}.90" := round(((get(i) / Min)*90),2)))
+}
+
 # *********************** CREATE OVERALL AND LAST5 DATAFRAMES ***************************
 
 #Use the latest GW as a starting template
@@ -54,25 +62,68 @@ template <- select(template, c(ID, Player, Team, Position, Status, Opponent))
 overall <- template
 last5 <- template
 
-sumColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
+GWColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
                  "AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
                  "CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",         
                  "FC", "FS", "DPt", "Off", "CS",  "TkWAndIntAndCLR",
                  "SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
 
 
-for (i in sumColumns) {
+for (i in GWColumns) {
   overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
   last5 <- left_join(last5, bind_rows(tail(gws, n=5)) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
 }
 
-#Dynamically create .90 columns 
-per90Columns <-  c("FPts", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
-"AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
-"CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",
-"A", "FC", "FS", "DPt", "Off", "CS",  "TkWAndIntAndCLR",
-"SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
+# *********************** DYNAMICALLY CREATE NEW COLUMNS ***************************
 
+#Remove the row if they didnt play e.g. Min == 0 (because 0's mess up SD)
+gwsMinus0Min <- lapply(gws, function(x) subset(x, Min != 0))
+
+for (i in GWColumns) {
+  #Standard Deviation
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.SD" := sd(get(i), na.rm = TRUE)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.SD" := sd(get(i), na.rm = TRUE)), by = "Player")
+  
+  #Minimum
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Min" := min(get(i), na.rm = TRUE)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Min" := min(get(i), na.rm = TRUE)), by = "Player")
+  
+  #Maximum
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Max" := max(get(i), na.rm = TRUE)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Max" := max(get(i), na.rm = TRUE)), by = "Player")
+
+  #Mean
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Mean" := mean(get(i), na.rm = TRUE)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Mean" := mean(get(i), na.rm = TRUE)), by = "Player")
+  
+  #Median
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Med" := median(get(i), na.rm = TRUE)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Med" := median(get(i), na.rm = TRUE)), by = "Player")
+  
+  #Lower Quartile 
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.LQ" := quantile(get(i), .25, na.rm = TRUE)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.LQ" := quantile(get(i), .25, na.rm = TRUE)), by = "Player")  
+  
+  #Median Absolute Deviation - needs to have constant = 1
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.MAD" := mad(get(i), constant = 1, na.rm = TRUE)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.MAD" := mad(get(i), constant = 1, na.rm = TRUE)), by = "Player")
+  
+}
+
+MADColumns <-  c("FPts.90", "G.90", "A.90", "Pts.90", "S.90", "SOT.90", "YC.90", "RC.90", "A2.90","KP.90",
+                   "AT.90", "TkW.90", "DIS.90", "ErG.90", "AP.90", "SFTP.90", "ACNC.90", "Int.90",
+                   "CLR.90", "CoS.90", "AER.90", "PKM.90", "OG.90", "GAD.90", "CSD.90", "CSM.90",
+                   "FC.90", "FS.90", "DPt.90", "Off.90", "CS.90",  "TkWAndIntAndCLR.90",
+                   "SOTAndKP.90", "CoSMinusDIS.90", "SOTMinusG.90", "KPMinusA.90")
+
+for (i in MADColumns) {
+  overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise("{i}.MAD" := mad(get(i), constant = 1, na.rm = TRUE)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gws, n=5)) %>% group_by(Player) %>% summarise("{i}.MAD" := mad(get(i), constant = 1, na.rm = TRUE)), by = "Player")
+}
+
+# *********************** CREATE COLUMNS THAT CAN ONLY BE ADDED AT THE OVERALL/LAST5 STAGE ***************************
+
+#.90 Columns
 for (i in per90Columns) {
   overall <- mutate(overall, "{i}.90" := round(((get(i) / Min)*90),2))
   last5 <- mutate(last5, "{i}.90" := round(((get(i) / Min)*90),2))
@@ -81,65 +132,14 @@ for (i in per90Columns) {
 #Min.GP
 overall <- mutate(overall, Min.GP = round((Min / GP),2))
 last5 <- mutate(last5, Min.GP = round((Min / GP),2))
-#FP.G
-overall <- mutate(overall, FP.G = round((FPts / GP),2))
-last5 <- mutate(last5, FP.G = round((FPts / GP),2))
-
-# *********************** ADD SD AND OTHER CALCULATIONS TO DATAFRAMES ***************************
-
-#Remove the row if they didnt play e.g. Min == 0 (because 0's mess up SD)
-gwsMinus0Min <- lapply(gws, function(x) subset(x, Min != 0))
-
-
-#Dynamically create SD, Min, and Max columns
-SDColumns <-  c("Min", "Min.GP", "FPts", "FP.G", "G", "A", "Pts", "S", "SOT", "FC", "FS", "YC",
-                "RC", "DPt", "Off", "CS", "A2", "KP",
-                "AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
-                "CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",         
-                "TkWAndIntAndCLR", "SOTAndKP")
-
-for (i in SDColumns) {
-  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.SD" := sd(get(i), na.rm = TRUE)), by = "Player")
-  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.SD" := sd(get(i), na.rm = TRUE)), by = "Player")
-  
-  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Min" := min(get(i), na.rm = TRUE)), by = "Player")
-  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Min" := min(get(i), na.rm = TRUE)), by = "Player")
-  
-  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Max" := max(get(i), na.rm = TRUE)), by = "Player")
-  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Max" := max(get(i), na.rm = TRUE)), by = "Player")
-}
-
-#Add Floor/Ceiling. e.g. floor means 90% of results above it
-overall <- mutate(overall, FP.G.Floor = (FP.G - (FP.G.SD * 1.29)))
-last5 <- mutate(last5, FP.G.Floor = (FP.G - (FP.G.SD * 1.29)))
-overall <- mutate(overall, FP.G.Ceiling = (FP.G + (FP.G.SD * 1.29)))
-last5 <- mutate(last5, FP.G.Ceiling = (FP.G + (FP.G.SD * 1.29)))
-
-#Standard Error - How far the sample mean is from the true mean
-overall <- mutate(overall, FP.G.SE = FP.G.SD / sqrt(GP))
-last5 <- mutate(last5, FP.G.SE = FP.G.SD / sqrt(GP))
-
-#Median - This should get more accurate as more GWs happen - Supposedly more accurate after 25 gameweeks
-overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.Med = median(FP.G, na.rm = TRUE)), by = "Player")
-last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.Med = median(FP.G, na.rm = TRUE)), by = "Player")
-
-#Lower Quartile - The Quartiles are apparently better for skewed distributions
-overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.LQ = quantile(FP.G, .25, na.rm = TRUE)), by = "Player")
-last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.LQ = quantile(FP.G, .25, na.rm = TRUE)), by = "Player")
-
-#Median Absolute Deviation - Median distance away from the median. needs the constant = 1
-overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise(FP.G.MAD = mad(FP.G, constant = 1, na.rm = TRUE)), by = "Player")
-last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise(FP.G.MAD = mad(FP.G, constant = 1, na.rm = TRUE)), by = "Player")
-
-#Could do MAD on .90 gw columns, because it removes outliers. 
 
 
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
 
-#Mark the top 10 players for each Status by their regular FP.G score
+#Mark the top 10 players for each Status by their regular FPts.Mean score
 top10 <- subset(overall, !(overall$Status %in% statuses))
 top10 <- top10 %>%                                      
-  arrange(desc(FP.G)) %>% 
+  arrange(desc(FPts.Mean)) %>% 
   group_by(Status) %>%
   slice(1:10)
 top10$Top10 <- 1
@@ -147,10 +147,10 @@ top10 <- subset(top10, select = c(Player, Top10))
 overall <- full_join(overall, top10, by = "Player")
 overall$Top10 <- ifelse(is.na(overall$Top10), 0, overall$Top10)
 
-#Mark the top 10 players for each Status by their regular FP.G score
+#Mark the top 10 players for each Status by their regular FPts.Mean score
 top10 <- subset(last5, !(last5$Status %in% statuses))
 top10 <- top10 %>%                                      
-  arrange(desc(FP.G)) %>% 
+  arrange(desc(FPts.Mean)) %>% 
   group_by(Status) %>%
   slice(1:10)
 top10$Top10 <- 1
@@ -175,8 +175,8 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(overall$Status)), "Waiver"), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FP.G"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FP.G.MAD"),
+                          selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FPts.90"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FPts.90.MAD"),
                           sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.GP, na.rm = TRUE), max = max(overall$Min.GP, na.rm = TRUE), value = min(overall$Min.GP, na.rm = TRUE)),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = min(overall$FPts.90, na.rm = TRUE)),
@@ -219,7 +219,7 @@ ui <- fluidPage(
                           
                           width = "2",
                           
-                          selectInput("bYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FP.G.SD"),
+                          selectInput("bYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FPts.Med"),
                           selectInput("bXAxis","Choose the X Axis", choices = c("Status", "Team"), selected = "Status"),
                           selectInput("bPlotType","Plot Type", choices = c("Box", "Violin"), selected = "Box"),
                           radioButtons("bLast5", "Overall or Last 5", choices = list("Overall" = 1, "Last 5" = 2),selected = 1),
@@ -306,7 +306,7 @@ server <- function(input, output) {
     df_temp <- filter(df_temp, Min.GP >= input$tMinMinsPerGP)
     df_temp <- filter(df_temp, Min >= input$tMinMins)
     
-    columns <- c("Player", "Team", "Status", "Position", "FP.G", "FP.G.SD", "FPts.90", "G", "A")
+    columns <- c("Player", "Team", "Status", "Position", "FPts.Mean", "FPts.SD", "FPts.90", "G", "A")
     columns <- append(columns, input$tPicker)
     
     df_temp <- df_temp[, which((names(df_temp) %in% columns)==TRUE)]
