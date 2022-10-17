@@ -7,12 +7,14 @@ library(stringi)
 library(shinyWidgets)
 library(stats)
 
+
 # *********************** LOAD & CLEAN DATA ***************************
 rm(list = ls())
 
 setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxV3")
 
 #Create a list of dataframes for each game week
+#CHECK THESE AGAINST FANTRAX. THE FP.G SHOULD MATCH Fpts.Mean
 gws <- list(
   merge(x = read.csv("FT_GW1.csv", header = TRUE), y = read.csv("FS_GW1.csv", header = TRUE)),
   merge(x = read.csv("FT_GW2.csv", header = TRUE), y = read.csv("FS_GW2.csv", header = TRUE)),
@@ -21,7 +23,10 @@ gws <- list(
   merge(x = read.csv("FT_GW5.csv", header = TRUE), y = read.csv("FS_GW5.csv", header = TRUE)),
   merge(x = read.csv("FT_GW6.csv", header = TRUE), y = read.csv("FS_GW6.csv", header = TRUE)),
   # merge(x = read.csv("FT_GW7.csv", header = TRUE), y = read.csv("FS_GW7.csv", header = TRUE))
-  merge(x = read.csv("FT_GW8.csv", header = TRUE), y = read.csv("FS_GW8.csv", header = TRUE)) #INCOMPLETE
+  merge(x = read.csv("FT_GW8.csv", header = TRUE), y = read.csv("FS_GW8.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW9.csv", header = TRUE), y = read.csv("FS_GW9.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW10.csv", header = TRUE), y = read.csv("FS_GW10.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW11.csv", header = TRUE), y = read.csv("FS_GW11.csv", header = TRUE)) #INCOMPLETE
 )
 
 #Statuses
@@ -33,12 +38,16 @@ gws <- lapply(gws, function(x) mutate(x, Min = as.numeric(as.character(Min))))
 gws <- lapply(gws, function(x) mutate(x, AP = as.numeric(gsub("\\,", "", AP))))
 gws <- lapply(gws, function(x) mutate(x, AP = as.numeric(as.character(AP))))
 
+#Split out Opponent and HomeAway
+#NOTE - Opponent might not be correct for each game week. It depends when the data was extracted
+gws <- lapply(gws, function(x) mutate(x, HomeOrAway = ifelse(startsWith(x$Opponent, "@"), "Away", "Home")))
+gws <- lapply(gws, function(x) mutate(x, Opponent = ifelse(startsWith(x$Opponent, "@"), substring(x$Opponent,2,4), substring(x$Opponent,1,3))))
+
 # *********************** ADD NEW COLUMNS TO GW DATA ***************************
 
 #new columns
 gws <- lapply(gws, function(x) mutate(x, TkWAndIntAndCLR = TkW + Int + CLR))
 gws <- lapply(gws, function(x) mutate(x, SOTAndKP = SOT + KP))
-gws <- lapply(gws, function(x) mutate(x, Min.GP = round((Min / GP) ,2)))
 gws <- lapply(gws, function(x) mutate(x, CoSMinusDIS = CoS - DIS))
 gws <- lapply(gws, function(x) mutate(x, SOTMinusG = SOT - G))
 gws <- lapply(gws, function(x) mutate(x, KPMinusA = KP - A))
@@ -131,9 +140,21 @@ for (i in per90Columns) {
   last5 <- mutate(last5, "{i}.90" := round(((get(i) / Min)*90),2))
 }
 
-#Min.GP
-overall <- mutate(overall, Min.GP = round((Min / GP),2))
-last5 <- mutate(last5, Min.GP = round((Min / GP),2))
+overall <- mutate(overall, "KPConversion" = round((AT / KP),2))
+last5 <- mutate(last5, "KPConversion" = round((AT / KP),2))
+
+overall <- mutate(overall, "SOTConversion" = round((G / SOT),2))
+last5 <- mutate(last5, "SOTConversion" = round((G / SOT),2))
+
+overall <- mutate(overall, "ShotAcc" = round((SOT / S),2))
+last5 <- mutate(last5, "ShotAcc" = round((SOT / S),2))
+
+overall <- mutate(overall, "InFinal3rd" = round((SFTP / AP),2))
+last5 <- mutate(last5, "InFinal3rd" = round((SFTP / AP),2))
+
+#Find out who has had the biggest increase in minutes over the last few games
+#~lm(. ~ time)$coef[2]
+
 
 
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
@@ -177,9 +198,9 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(overall$Status)), "Waiver"), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FPts.90"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FPts.90.MAD"),
-                          sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.GP, na.rm = TRUE), max = max(overall$Min.GP, na.rm = TRUE), value = min(overall$Min.GP, na.rm = TRUE)),
+                          selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FPts.LQ"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FPts.Mean"),
+                          sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.Mean, na.rm = TRUE), max = max(overall$Min.Mean, na.rm = TRUE), value = min(overall$Min.Mean, na.rm = TRUE)),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = min(overall$FPts.90, na.rm = TRUE)),
                           checkboxInput("pAddLines", "Add Lines", value = FALSE, width = NULL),
@@ -203,7 +224,7 @@ ui <- fluidPage(
                           selectInput("tTeam","Choose a team", choices = c("All",unique(overall$Team)), selected = "All"),
                           selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(overall$Status), "Waiver"), selected = "All"),
                           selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          sliderInput("tMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.GP, na.rm = TRUE), max = max(overall$Min.GP, na.rm = TRUE), value = min(overall$Min.GP, na.rm = TRUE)),
+                          sliderInput("tMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.Mean, na.rm = TRUE), max = max(overall$Min.Mean, na.rm = TRUE), value = min(overall$Min.Mean, na.rm = TRUE)),
                           sliderInput("tMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(overall$Min, na.rm = TRUE)),
                           pickerInput("tPicker", "Columns", choices = sort(names(overall)), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
                           radioButtons("tLast5", "Overall or Last 5", choices = list("Overall" = 1, "Last 5" = 2),selected = 1),
@@ -221,7 +242,7 @@ ui <- fluidPage(
                           
                           width = "2",
                           
-                          selectInput("bYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FPts.Med"),
+                          selectInput("bYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FPts.LQ"),
                           selectInput("bXAxis","Choose the X Axis", choices = c("Status", "Team"), selected = "Status"),
                           selectInput("bPlotType","Plot Type", choices = c("Box", "Violin"), selected = "Box"),
                           radioButtons("bLast5", "Overall or Last 5", choices = list("Overall" = 1, "Last 5" = 2),selected = 1),
@@ -244,7 +265,7 @@ server <- function(input, output) {
     }else{
       df_temp <- last5
     }
-    df_temp <- filter(df_temp, Min.GP >= input$pMinMinsPerGP)
+    df_temp <- filter(df_temp, Min.Mean >= input$pMinMinsPerGP)
     df_temp <- filter(df_temp, Min >= input$pMinMins)
     df_temp <- filter(df_temp, FPts.90 >= input$pMinFPts.90)
     if (input$pTop10 == TRUE) {
@@ -305,10 +326,10 @@ server <- function(input, output) {
     }else{
       df_temp <- last5
     }
-    df_temp <- filter(df_temp, Min.GP >= input$tMinMinsPerGP)
+    df_temp <- filter(df_temp, Min.Mean >= input$tMinMinsPerGP)
     df_temp <- filter(df_temp, Min >= input$tMinMins)
     
-    columns <- c("Player", "Team", "Status", "Position", "FPts.Mean", "FPts.SD", "FPts.90", "G", "A")
+    columns <- c("Player", "Team", "Status", "Position", "FPts.Mean", "FPts.Med", "FPts.MAD", "FPts.90", "G", "A", "Min", "Min.Mean", "FPts.LQ")
     columns <- append(columns, input$tPicker)
     
     df_temp <- df_temp[, which((names(df_temp) %in% columns)==TRUE)]
