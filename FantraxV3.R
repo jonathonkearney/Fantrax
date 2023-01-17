@@ -30,7 +30,13 @@ gws <- list(
   merge(x = read.csv("FT_GW11.csv", header = TRUE), y = read.csv("FS_GW11.csv", header = TRUE)),
   merge(x = read.csv("FT_GW12.csv", header = TRUE), y = read.csv("FS_GW12.csv", header = TRUE)),
   merge(x = read.csv("FT_GW13.csv", header = TRUE), y = read.csv("FS_GW13.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW14.csv", header = TRUE), y = read.csv("FS_GW14.csv", header = TRUE)) #INCOMPLETE
+  merge(x = read.csv("FT_GW14.csv", header = TRUE), y = read.csv("FS_GW14.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW15.csv", header = TRUE), y = read.csv("FS_GW15.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW16.csv", header = TRUE), y = read.csv("FS_GW16.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW17.csv", header = TRUE), y = read.csv("FS_GW17.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW18.csv", header = TRUE), y = read.csv("FS_GW18.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW19.csv", header = TRUE), y = read.csv("FS_GW19.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW20.csv", header = TRUE), y = read.csv("FS_GW20.csv", header = TRUE)) #INCOMPLETE
 )
 
 #Statuses
@@ -159,10 +165,11 @@ last5 <- mutate(last5, "InFinal3rd" = round((SFTP / AP),2))
 overall <- mutate(overall, "FPts.MedMinusMean" = round((FPts.Med - FPts.Mean),2))
 last5 <- mutate(last5, "FPts.MedMinusMean" = round((FPts.Med - FPts.Mean),2))
 
-#Find out who has had the biggest increase in minutes over the last few games
-#~lm(. ~ time)$coef[2]
-
-
+#Would these be the best measure for picking the draft for next season?
+overall <- mutate(overall, "FPts.MeanMinusMAD" = round((FPts.Mean - FPts.MAD),2))
+last5 <- mutate(last5, "FPts.MeanMinusMAD" = round((FPts.Mean - FPts.MAD),2))
+overall <- mutate(overall, "FPts.MedMinusMAD" = round((FPts.Med - FPts.MAD),2))
+last5 <- mutate(last5, "FPts.MedMinusMAD" = round((FPts.Med - FPts.MAD),2))
 
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
 
@@ -190,6 +197,13 @@ last5$Top10 <- ifelse(is.na(last5$Top10), 0, last5$Top10)
 
 # ****************************************************************************************************
 
+#find the highest values between both last5 and overall for use below
+maxFPts.Mean <- max(c(max(overall$FPts.Mean, na.rm = TRUE),max(last5$FPts.Mean, na.rm = TRUE)),na.rm = TRUE)
+maxFPts.90 <- max(c(max(overall$FPts.90, na.rm = TRUE),max(last5$FPts.90, na.rm = TRUE)),na.rm = TRUE)
+minFPts.Mean <- min(c(min(overall$FPts.Mean, na.rm = TRUE),min(last5$FPts.Mean, na.rm = TRUE)),na.rm = TRUE)
+minFPts.90 <- min(c(min(overall$FPts.90, na.rm = TRUE),min(last5$FPts.90, na.rm = TRUE)),na.rm = TRUE)
+
+# ****************************************************************************************************
 ui <- fluidPage(
   
   theme = shinytheme("flatly"),
@@ -210,9 +224,9 @@ ui <- fluidPage(
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           # sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.Mean, na.rm = TRUE), max = max(overall$Min.Mean, na.rm = TRUE), value = min(overall$Min.Mean, na.rm = TRUE)),
                           # sliderInput("pMinFPts.Mean", "Minimum FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = min(overall$FPts.Mean, na.rm = TRUE)),
-                          sliderInput("pMinFPts.Mean", "Minimum FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = c(min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE))),
+                          sliderInput("pMinFPts.Mean", "Minimum FPts.Mean", min = minFPts.Mean, max = maxFPts.Mean, value = c(minFPts.Mean, maxFPts.Mean)),
                           # sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = min(overall$FPts.90, na.rm = TRUE)),
-                          sliderInput("pMinFPts.90", "Minimum FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
+                          sliderInput("pMinFPts.90", "Minimum FPts per 90", min = minFPts.90, max = maxFPts.90, value = c(minFPts.90, maxFPts.90)),
                           checkboxInput("pAddLines", "Add Lines", value = FALSE, width = NULL),
                           radioButtons("pLast5", "Overall or Last 5", choices = list("Overall" = 1, "Last 5" = 2),selected = 1),
                           checkboxInput("pTop10", "Top 10 Only", value = FALSE, width = NULL)
