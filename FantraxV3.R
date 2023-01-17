@@ -171,6 +171,14 @@ last5 <- mutate(last5, "FPts.MeanMinusMAD" = round((FPts.Mean - FPts.MAD),2))
 overall <- mutate(overall, "FPts.MedMinusMAD" = round((FPts.Med - FPts.MAD),2))
 last5 <- mutate(last5, "FPts.MedMinusMAD" = round((FPts.Med - FPts.MAD),2))
 
+#This formula will need to change if the points system changes
+overall <- mutate(overall, "GhostPts.90" = round(
+  ((FPts - ( (CSD * 6) + (CSM * 1) + (G * 9) + (AT * 6))) / Min) * 90
+  ,2))
+last5 <-  mutate(last5, "GhostPts.90" = round(
+  ((FPts - ( (CSD * 6) + (CSM * 1) + (G * 9) + (AT * 6))) / Min) * 90
+  ,2))
+
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
 
 #Mark the top 10 players for each Status by their regular FPts.Mean score
