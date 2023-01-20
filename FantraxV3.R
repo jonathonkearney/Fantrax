@@ -6,6 +6,7 @@ library(rvest)
 library(stringi)
 library(shinyWidgets)
 library(stats)
+library(PerformanceAnalytics)
 
 
 # *********************** LOAD & CLEAN DATA ***************************
@@ -113,8 +114,10 @@ for (i in GWColumns) {
   last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Max" := max(get(i), na.rm = TRUE)), by = "Player")
 
   #Mean
-  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Mean" := mean(get(i), na.rm = TRUE)), by = "Player")
-  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Mean" := mean(get(i), na.rm = TRUE)), by = "Player")
+  # overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Mean" := mean(get(i), na.rm = TRUE)), by = "Player")
+  # last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Mean" := mean(get(i), na.rm = TRUE)), by = "Player")
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Mean" := round(mean(get(i), na.rm = TRUE),2)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.Mean" := round(mean(get(i), na.rm = TRUE),2)), by = "Player")
   
   #Median
   overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Med" := median(get(i), na.rm = TRUE)), by = "Player")
@@ -127,6 +130,11 @@ for (i in GWColumns) {
   #Median Absolute Deviation - needs to have constant = 1
   overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.MAD" := mad(get(i), constant = 1, na.rm = TRUE)), by = "Player")
   last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.MAD" := mad(get(i), constant = 1, na.rm = TRUE)), by = "Player")
+  
+  #Downside Deviation
+  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.DownDev" := round(DownsideDeviation(get(i), MAR = mean(get(i)), na.rm = TRUE),2)), by = "Player")
+  last5 <- left_join(last5, bind_rows(tail(gwsMinus0Min, n=5)) %>% group_by(Player) %>% summarise("{i}.DownDev" := round(DownsideDeviation(get(i), MAR = mean(get(i)), na.rm = TRUE),2)), by = "Player")
+  
   
 }
 
@@ -172,12 +180,17 @@ overall <- mutate(overall, "FPts.MedMinusMAD" = round((FPts.Med - FPts.MAD),2))
 last5 <- mutate(last5, "FPts.MedMinusMAD" = round((FPts.Med - FPts.MAD),2))
 
 #This formula will need to change if the points system changes
-overall <- mutate(overall, "GhostPts.90" = round(
-  ((FPts - ( (CSD * 6) + (CSM * 1) + (G * 9) + (AT * 6))) / Min) * 90
-  ,2))
-last5 <-  mutate(last5, "GhostPts.90" = round(
-  ((FPts - ( (CSD * 6) + (CSM * 1) + (G * 9) + (AT * 6))) / Min) * 90
-  ,2))
+overall <- mutate(overall, "GhostPts.90" = round(((FPts - ( (CSD * 6) + (CSM * 1) + (G * 9) + (AT * 6))) / Min) * 90,2))
+last5 <-  mutate(last5, "GhostPts.90" = round(((FPts - ( (CSD * 6) + (CSM * 1) + (G * 9) + (AT * 6))) / Min) * 90,2))
+
+#GhostPts.90.PC - Percent of points that are Ghost points
+overall <- mutate(overall, "GhostPts.90.PC" = round(GhostPts.90 / FPts.90,2))
+last5 <-  mutate(last5, "GhostPts.90.PC" = round(GhostPts.90 / FPts.90,2))
+
+#mean - Downwards Deviation
+overall <- mutate(overall, "FPts.MeanMinusDD" = round(FPts.Mean - FPts.DownDev,2))
+last5 <-  mutate(last5, "FPts.MeanMinusDD" = round(FPts.Mean - FPts.DownDev,2))
+
 
 # *********************** ADD TOP10 TO DATAFRAMES ***************************
 
@@ -367,7 +380,7 @@ server <- function(input, output) {
     df_temp <- filter(df_temp, Min >= input$tMinMins)
     
     columns <- c("Player", "Team", "Status", "Position", "FPts.Mean", "FPts.Med", "FPts.MAD", "FPts.90", "G", "A", "Min",
-                 "Min.Mean", "FPts.LQ", "Min.MAD")
+                 "Min.Mean", "GhostPts.90", "GhostPts.90.PC", "FPts.MeanMinusDD")
     columns <- append(columns, input$tPicker)
     
     df_temp <- df_temp[, which((names(df_temp) %in% columns)==TRUE)]
