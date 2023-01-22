@@ -37,7 +37,8 @@ gws <- list(
   merge(x = read.csv("FT_GW17.csv", header = TRUE), y = read.csv("FS_GW17.csv", header = TRUE)),
   merge(x = read.csv("FT_GW18.csv", header = TRUE), y = read.csv("FS_GW18.csv", header = TRUE)),
   merge(x = read.csv("FT_GW19.csv", header = TRUE), y = read.csv("FS_GW19.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW20.csv", header = TRUE), y = read.csv("FS_GW20.csv", header = TRUE)) #INCOMPLETE
+  merge(x = read.csv("FT_GW20.csv", header = TRUE), y = read.csv("FS_GW20.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW21.csv", header = TRUE), y = read.csv("FS_GW21.csv", header = TRUE)) #INCOMPLETE
 )
 
 #Statuses
@@ -73,6 +74,15 @@ per90Columns <-  c("FPts", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
 for (i in per90Columns) {
   gws <- lapply(gws, function(x) mutate(x, "{i}.90" := round(((get(i) / Min)*90),2)))
 }
+
+# *********************** DIVIDE DOUBLE GAME WEEKS BY 2 (so that they don't mess up the numbers) ***************************
+# THIS MAY MESS THINGS UP IN UNEXPECTED WAYS... IT MAY BE BETTER NOT TO DO THIS POTENTIALLY
+# Dividing by 2 is imperfect because things like the mean will be different if you split (28/2) compared to (15/15) 
+
+# for (i in per90Columns) {
+#   gws <- lapply(gws, function(x) mutate(x, "{i}" := ifelse(x$GP == 2, get(i)/2, get(i))))
+# }
+
 
 # *********************** CREATE OVERALL AND LAST5 DATAFRAMES ***************************
 
