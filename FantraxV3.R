@@ -77,11 +77,13 @@ for (i in per90Columns) {
 
 # *********************** DIVIDE DOUBLE GAME WEEKS BY 2 (so that they don't mess up the numbers) ***************************
 # THIS MAY MESS THINGS UP IN UNEXPECTED WAYS... IT MAY BE BETTER NOT TO DO THIS POTENTIALLY
-# Dividing by 2 is imperfect because things like the mean will be different if you split (28/2) compared to (15/15) 
+# Dividing by 2 is imperfect because things like the mean will be different if you split (28/2) compared to (15/15) - Will it though?
 
-# for (i in per90Columns) {
-#   gws <- lapply(gws, function(x) mutate(x, "{i}" := ifelse(x$GP == 2, get(i)/2, get(i))))
-# }
+doubleGWColumns <- c(per90Columns, "Min")
+
+for (i in doubleGWColumns) {
+  gws <- lapply(gws, function(x) mutate(x, "{i}" := ifelse(x$GP == 2, get(i)/2, get(i))))
+}
 
 
 # *********************** CREATE OVERALL AND LAST5 DATAFRAMES ***************************
