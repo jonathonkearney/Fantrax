@@ -38,7 +38,19 @@ gws <- list(
   merge(x = read.csv("FT_GW18.csv", header = TRUE), y = read.csv("FS_GW18.csv", header = TRUE)),
   merge(x = read.csv("FT_GW19.csv", header = TRUE), y = read.csv("FS_GW19.csv", header = TRUE)),
   merge(x = read.csv("FT_GW20.csv", header = TRUE), y = read.csv("FS_GW20.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW21.csv", header = TRUE), y = read.csv("FS_GW21.csv", header = TRUE)) #INCOMPLETE
+  merge(x = read.csv("FT_GW21.csv", header = TRUE), y = read.csv("FS_GW21.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW22.csv", header = TRUE), y = read.csv("FS_GW22.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW23.csv", header = TRUE), y = read.csv("FS_GW23.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW24.csv", header = TRUE), y = read.csv("FS_GW24.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW25.csv", header = TRUE), y = read.csv("FS_GW25.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW26.csv", header = TRUE), y = read.csv("FS_GW26.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW27.csv", header = TRUE), y = read.csv("FS_GW27.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW28.csv", header = TRUE), y = read.csv("FS_GW28.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW29.csv", header = TRUE), y = read.csv("FS_GW29.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW30.csv", header = TRUE), y = read.csv("FS_GW30.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW31.csv", header = TRUE), y = read.csv("FS_GW31.csv", header = TRUE)),
+  merge(x = read.csv("FT_GW32.csv", header = TRUE), y = read.csv("FS_GW32.csv", header = TRUE)) #INCOMPLETE
+  
 )
 
 #Statuses
@@ -199,7 +211,7 @@ last5 <-  mutate(last5, "GhostPts.90" = round(((FPts - ( (CSD * 6) + (CSM * 1) +
 overall <- mutate(overall, "GhostPts.90.PC" = round(GhostPts.90 / FPts.90,2))
 last5 <-  mutate(last5, "GhostPts.90.PC" = round(GhostPts.90 / FPts.90,2))
 
-#mean - Downwards Deviation
+#mean - Downside Deviation
 overall <- mutate(overall, "FPts.MeanMinusDD" = round(FPts.Mean - FPts.DownDev,2))
 last5 <-  mutate(last5, "FPts.MeanMinusDD" = round(FPts.Mean - FPts.DownDev,2))
 
@@ -253,7 +265,7 @@ ui <- fluidPage(
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(overall$Status)), "Waiver"), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "FPts.Mean"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "Min.MAD"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FPts.DownDev"),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           # sliderInput("pMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.Mean, na.rm = TRUE), max = max(overall$Min.Mean, na.rm = TRUE), value = min(overall$Min.Mean, na.rm = TRUE)),
                           # sliderInput("pMinFPts.Mean", "Minimum FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = min(overall$FPts.Mean, na.rm = TRUE)),
@@ -392,7 +404,7 @@ server <- function(input, output) {
     df_temp <- filter(df_temp, Min >= input$tMinMins)
     
     columns <- c("Player", "Team", "Status", "Position", "FPts.Mean", "FPts.Med", "FPts.MAD", "FPts.90", "G", "A", "Min",
-                 "Min.Mean", "GhostPts.90", "GhostPts.90.PC", "FPts.MeanMinusDD")
+                 "Min.Mean", "GhostPts.90", "FPts.DownDev", "FPts.MeanMinusDD")
     columns <- append(columns, input$tPicker)
     
     df_temp <- df_temp[, which((names(df_temp) %in% columns)==TRUE)]
