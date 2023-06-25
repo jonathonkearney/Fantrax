@@ -169,7 +169,17 @@ Create_Data <- function(team, status, position, x, y, minMins, minFPts.mean, max
     }
   }
   
+  if (!("FPts.Mean" %in% colnames(df))) {
+    df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("FPts.Mean" := round(mean(FPts, na.rm = TRUE),2)), by = "Player")
+  }
+  df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("FPts" := sum(get(i))), by = "Player")
+  df <- mutate(df, "FPts.90" := round(((FPts / Min)*90),2))
   
+  df <- filter(df, Min >= minMins)
+  df <- filter(df, FPts.Mean >= minFPts.mean)
+  df <- filter(df, FPts.Mean <= maxFPts.mean)
+  df <- filter(df, FPts.90 >= minFPts.90)
+  df <- filter(df, FPts.90 <= maxFPts.90)
   
   if (team != "All") {
     df <- filter(df, Team == team)
