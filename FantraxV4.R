@@ -60,6 +60,23 @@ gws <- list(
   merge(x = read.csv("FT_GW37.csv", header = TRUE), y = read.csv("FS_GW37.csv", header = TRUE)),
   merge(x = read.csv("FT_GW38.csv", header = TRUE), y = read.csv("FS_GW38.csv", header = TRUE))
 )
+
+#----------------------- DATA CLEANING -----------------------#
+
+#remove comma from data$Min and AP and convert to numeric 
+gws <- lapply(gws, function(x) mutate(x, Min = as.numeric(gsub("\\,", "", Min))))
+gws <- lapply(gws, function(x) mutate(x, Min = as.numeric(as.character(Min))))
+gws <- lapply(gws, function(x) mutate(x, AP = as.numeric(gsub("\\,", "", AP))))
+gws <- lapply(gws, function(x) mutate(x, AP = as.numeric(as.character(AP))))
+
+#Split out Opponent and HomeAway
+#NOTE - Opponent might not be correct for each game week. It depends when the data was extracted
+gws <- lapply(gws, function(x) mutate(x, HomeOrAway = ifelse(startsWith(x$Opponent, "@"), "Away", "Home")))
+gws <- lapply(gws, function(x) mutate(x, Opponent = ifelse(startsWith(x$Opponent, "@"), substring(x$Opponent,2,4), substring(x$Opponent,1,3))))
+
+#Remove the row if they didnt play e.g. Min == 0 (because 0's mess up SD)
+gws <- lapply(gws, function(x) subset(x, Min != 0))
+
 #----------------------- GLOBAL VARIABLES -----------------------#
 
 #Statuses
@@ -76,18 +93,22 @@ numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC
                      "FC", "FS", "DPt", "Off", "CS",  "TkWAndIntAndCLR",
                      "SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
 
-#----------------------- DATA CLEANING -----------------------#
+#Variable and calculation combos
+varCombos <- numericColumns
+for(i in numericColumns){
+  for(j in c("SD", "Mean", "Med", "MAD", "DownDev")){
+    varCombos <- c(varCombos, paste(i, j, sep = ".")) 
+  }
+}
 
-#remove comma from data$Min and AP and convert to numeric 
-gws <- lapply(gws, function(x) mutate(x, Min = as.numeric(gsub("\\,", "", Min))))
-gws <- lapply(gws, function(x) mutate(x, Min = as.numeric(as.character(Min))))
-gws <- lapply(gws, function(x) mutate(x, AP = as.numeric(gsub("\\,", "", AP))))
-gws <- lapply(gws, function(x) mutate(x, AP = as.numeric(as.character(AP))))
-
-#Split out Opponent and HomeAway
-#NOTE - Opponent might not be correct for each game week. It depends when the data was extracted
-gws <- lapply(gws, function(x) mutate(x, HomeOrAway = ifelse(startsWith(x$Opponent, "@"), "Away", "Home")))
-gws <- lapply(gws, function(x) mutate(x, Opponent = ifelse(startsWith(x$Opponent, "@"), substring(x$Opponent,2,4), substring(x$Opponent,1,3))))
+#create basic overall dataframe, so that you have min/max for sliders
+overall <- as.data.frame(tail(gws, n=1))
+overall <- select(overall, c(ID, Player, Team, Position, Status))
+overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise("FPts.Mean" := round(mean(FPts, na.rm = TRUE),2)), by = "Player")
+for (i in c("FPts", "Min")) {
+  overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
+}
+overall <- mutate(overall, "FPts.90" := round(((FPts / Min)*90),2))
 
 #----------------------- NEW GW COLUMNS -----------------------#
 
@@ -118,58 +139,68 @@ for (i in numericColumns) {
 
 Create_Data <- function(team, status, position, x, y, minMins, minFPts.mean, maxFPts.mean, minFPts.90, maxFPts.90, startGW, endGW) {
   
-  columns <- c()
+  #CALCULATE THE TWO COLUMNS WE NEED, ADD THEM TO THE DF, THEN FILTER THE DF?
+  
+  #should always be the last df
+  df <- as.data.frame(tail(gws, n=1))
+  df <- select(df, c(ID, Player, Team, Position, Status))
+  
   gwWindow <- gws[startGW:endGW]
-  df <- gws[[endGW]]
-  df <- select(template, c(ID, Player, Team, Position, Status))
   
-  if(startGW == min(gwNumbers) & endGW == max(gwNumbers)){
-    columns <- numericColumns
-  }
-  else{
-    columns <- c(x, y)
+  for(i in c(x, y)){
     
-    
-    # gwWindow <- lapply(gwWindow, function(x) subset(x, Team == team, Status == ))
-    
+    var <- strsplit(i, ".", fixed = TRUE)[[1]][1]
+    calc <- strsplit(i, ".", fixed = TRUE)[[1]][2]
+      
+    if(calc == "SD"){
+      df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
+    }
+    else if(calc == "Mean"){
+      df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+    }
+    else if(calc == "Med"){
+      df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
+    }
+    else if(calc == "MAD"){
+      df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
+    }
+    else if(calc == "DownDev"){
+      df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+    }
   }
   
   
-  #SUM each (summable) GW column
-  for (i in columns) {
-    df <- left_join(overall, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
-  }
   
-}
-
-
-#Use the latest GW as a starting template
-template <- as.data.frame(tail(gws, n=1))
-template <- select(template, c(ID, Player, Team, Position, Status))
-overall <- template
-
-#SUM each (summable) GW column to create the overall columns
-for (i in numericColumns) {
-  overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
-}
-
-#Remove the row if they didnt play e.g. Min == 0 (because 0's mess up SD)
-gwsMinus0Min <- lapply(gws, function(x) subset(x, Min != 0))
-
-for (i in numericColumns) {
-  overall <- left_join(overall, bind_rows(gwsMinus0Min) %>% group_by(Player) %>% summarise("{i}.Mean" := round(mean(get(i), na.rm = TRUE),2)), by = "Player")
-}
-
-for (i in numericColumns) {
-  if(i != "Min" & i != "GP" & i != "GS"){
-    overall <- mutate(overall, "{i}.90" := round(((get(i) / Min)*90),2))
+  if (team != "All") {
+    df <- filter(df, Team == team)
   }
+  if (status != "All") {
+    if (status == "Waiver") {
+      df <- filter(df, str_detect(df$Status, "^W \\("))
+    }
+    else if (status == "All Available") {
+      df <- filter(df, str_detect(df$Status, "^W \\(") | str_detect(df$Status, "^FA"))
+    }
+    else if (status == "All Taken") {
+      df <- filter(df, !Status %in% statuses)
+    }
+    else{
+      df <- filter(df, Status == status)  
+    }
+  }
+  if (position != "All") {
+    if(position == "D"){
+      df <- filter(df, str_detect(df$Position, "D"))
+    }
+    else if(position == "M"){
+      df <- filter(df, str_detect(df$Position, "M"))
+    }
+    else if(position == "F"){
+      df <- filter(df, str_detect(df$Position, "F"))
+    }
+  }
+
 }
-#----------------------- CREATE OVERALL DATAFRAME -----------------------#
-# overall <- Create_Data()
-
-
-
 
 
 #----------------------- UI -----------------------#
@@ -188,12 +219,13 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(overall$Status)), "Waiver"), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(names(overall)), selected = "FPts.MeanMinusDD"),
-                          selectInput("pYAxis","Choose the Y Axis", choices = sort(names(overall)), selected = "Min.Mean"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.MeanMinusDD"),
+                          selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "Min.Mean"),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pFPts.Mean", "FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = c(min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE))),
                           sliderInput("pFPts.90", "FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
-                          sliderInput("pWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
+                          sliderInput("pWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers))),
+                          actionButton("pButton", "Apply")
                           
                         ),
                         
