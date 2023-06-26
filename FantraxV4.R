@@ -108,6 +108,7 @@ for (i in c("FPts", "Min")) {
 }
 overall <- mutate(overall, "FPts.90" := round(((FPts / Min)*90),2))
 
+#List of our teams for the status dropdowns
 fantraxTeams <- unique(overall$Status)
 fantraxTeams <- sort(fantraxTeams[!grepl("^W \\(|^FA", fantraxTeams)])
                        
