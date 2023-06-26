@@ -2,8 +2,7 @@ library(tidyverse)
 library(shiny)
 library(shinythemes)
 library(DT)
-# library(stringi)
-# library(shinyWidgets)
+library(shinyWidgets)
 library(stats)
 library(PerformanceAnalytics)
 
@@ -56,6 +55,10 @@ gws <- list(
   merge(x = read.csv("FT_GW37.csv", header = TRUE), y = read.csv("FS_GW37.csv", header = TRUE)),
   merge(x = read.csv("FT_GW38.csv", header = TRUE), y = read.csv("FS_GW38.csv", header = TRUE))
 )
+#----------------------- TEMPLATE -----------------------#
+#Template needs to be made first before you remove rows with 0 mins
+template <- as.data.frame(tail(gws, n=1))
+template <- select(template, c(Player, Team, Position, Status))
 
 #----------------------- DATA CLEANING -----------------------#
 
@@ -98,8 +101,7 @@ for(i in numericColumns){
 }
 
 #create basic overall dataframe, so that you have min/max for sliders
-overall <- as.data.frame(tail(gws, n=1))
-overall <- select(overall, c(ID, Player, Team, Position, Status))
+overall <- template
 overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise("FPts.Mean" := round(mean(FPts, na.rm = TRUE),2)), by = "Player")
 for (i in c("FPts", "Min")) {
   overall <- left_join(overall, bind_rows(gws) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
@@ -133,13 +135,12 @@ for (i in numericColumns) {
 
 #----------------------- CREATE DATA FUNCTION -----------------------#
 
-Create_Data <- function(team, status, position, x, y, minMins, minFPts.mean, maxFPts.mean, minFPts.90, maxFPts.90, startGW, endGW) {
+Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, maxFPts.mean, minFPts.90, maxFPts.90, startGW, endGW) {
   
   #CALCULATE THE TWO COLUMNS WE NEED, ADD THEM TO THE DF, THEN FILTER THE DF?
   
   #should always be the last df
-  df <- as.data.frame(tail(gws, n=1))
-  df <- select(df, c(ID, Player, Team, Position, Status))
+  df <- template
   
   #this might play up in the unlikely event of a cancelled gameweek
   gwWindow <- gws[startGW:endGW]
@@ -151,46 +152,54 @@ Create_Data <- function(team, status, position, x, y, minMins, minFPts.mean, max
   }
   df <- mutate(df, "FPts.90" := round(((FPts / Min)*90),2))
   
-  #
-  for(i in c(x, y)){
+  #calculate and add the new columns
+  for(i in vars){
     
-    var <- strsplit(i, ".", fixed = TRUE)[[1]][1]
-    calc <- strsplit(i, ".", fixed = TRUE)[[1]][2]
+    #If the new column to be added is already in the dataframe then skip to the end of the function
+    if(!(i %in% colnames(df))){
       
-    if(calc == "SD"){
-      df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
-    }
-    else if(calc == "Mean"){
-      if (var != "FPts") {
-        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+      #if it doesn't contain a . then it must be just the var without a calc (e.g. the sum of the var)
+      if (!(grepl("\\.", i))) {
+        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
       }
+      else{
+        var <- strsplit(i, ".", fixed = TRUE)[[1]][1]
+        calc <- strsplit(i, ".", fixed = TRUE)[[1]][2]
+        
+        if(calc == "SD"){
+          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
+        }
+        else if(calc == "Mean"){
+          if (var != "FPts") {
+            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+          }
+        }
+        else if(calc == "Med"){
+          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
+        }
+        else if(calc == "MAD"){
+          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
+        }
+        else if(calc == "DownDev"){
+          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+          df[, ncol(df)] <- as.vector(df[, ncol(df)])
+        }
+        else if(calc == "MeanMinusDD"){
+          if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
+            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+          }
+          if (!(paste(var, "DownDev", sep = ".") %in% colnames(df))) {
+            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+          }
+          df <- mutate(df, !!paste0(var, ".MeanMinusDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
+        }
+        else if(calc == "90"){
+          for (i in c(var, "Min")) {
+            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}" := sum(get(var))), by = "Player")
+          }
+          df <- mutate(df, "{var}.90" := round(((get(var) / Min)*90),2))
+        }
       }
-    else if(calc == "Med"){
-      df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
-    }
-    else if(calc == "MAD"){
-      df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
-    }
-    else if(calc == "DownDev"){
-      df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
-      df[, ncol(df)] <- as.vector(df[, ncol(df)])
-    }
-    else if(calc == "MeanMinusDD"){
-      if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
-        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
-        print("Made {var}.Mean")
-      }
-      if (!(paste(var, "DownDev", sep = ".") %in% colnames(df))) {
-        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
-        print("Made {var}.DownDev")
-      }
-      df <- mutate(df, !!paste0(var, ".MeanMinusDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
-    }
-    else if(calc == "90"){
-      for (i in c(var, "Min")) {
-        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}" := sum(get(var))), by = "Player")
-      }
-      df <- mutate(df, "{var}.90" := round(((get(var) / Min)*90),2))
     }
   }
   
@@ -232,7 +241,7 @@ Create_Data <- function(team, status, position, x, y, minMins, minFPts.mean, max
   return(df)
 }
 
-# test <- Create_Data("All", "All", "All", "KP.Mean", "G.DownDev", 10, 1, 30, 1, 30, "1", "38")
+# test <- Create_Data("All", "All", "All", c("KP.Mean", "G.DownDev"), 10, 1, 30, 1, 30, "1", "38")
 
 #----------------------- UI -----------------------#
 ui <- fluidPage(
@@ -272,27 +281,28 @@ ui <- fluidPage(
                           
                           width = "2",
                           
-                          # selectInput("tTeam","Choose a team", choices = c("All",unique(overall$Team)), selected = "All"),
-                          # selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(overall$Status), "Waiver"), selected = "All"),
-                          # selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          # sliderInput("tMinMinsPerGP", "Minimum Minutes Per GP", min = min(overall$Min.Mean, na.rm = TRUE), max = max(overall$Min.Mean, na.rm = TRUE), value = min(overall$Min.Mean, na.rm = TRUE)),
-                          # sliderInput("tMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(overall$Min, na.rm = TRUE)),
-                          # pickerInput("tPicker", "Columns", choices = sort(names(overall)), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
-                          # radioButtons("tLast5", "Overall or Last 5", choices = list("Overall" = 1, "Last 5" = 2),selected = 1),
+                          selectInput("tTeam","Choose a team", choices = c("All",unique(overall$Team)), selected = "All"),
+                          selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(overall$Status), "Waiver"), selected = "All"),
+                          selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
+                          sliderInput("tMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
+                          sliderInput("tFPts.Mean", "FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = c(min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE))),
+                          sliderInput("tFPts.90", "FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
+                          pickerInput("tPicker", "Columns", choices = sort(varCombos), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
+                          sliderInput("tWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
                         ),
                         
                         mainPanel(
-                          # DT::dataTableOutput("table")
+                          DT::dataTableOutput("table")
                         )
                       )
              )
   )
 )
 
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   output$plot <- renderPlot({
-    df_temp <- Create_Data(input$pTeam, input$pStatus, input$pPosition, input$pXAxis, input$pYAxis, 
+    df_temp <- Create_Data(input$pTeam, input$pStatus, input$pPosition, c(input$pXAxis, input$pYAxis), 
                                  input$pMinMins, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2],
                                  input$pWindow[1], input$pWindow[2])
     
@@ -313,7 +323,14 @@ server <- function(input, output) {
   }, res = 90) #the resolution of the plot
   
   output$table = DT::renderDataTable({
-    
+    extraCols <- ("FPts.MeanMinusDD")
+    df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
+                             input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2],
+                             input$tWindow[1], input$tWindow[2])
+  })
+  
+  session$onSessionEnded(function() {
+    stopApp()
   })
 }
 
