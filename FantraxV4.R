@@ -108,6 +108,9 @@ for (i in c("FPts", "Min")) {
 }
 overall <- mutate(overall, "FPts.90" := round(((FPts / Min)*90),2))
 
+fantraxTeams <- unique(overall$Status)
+fantraxTeams <- sort(fantraxTeams[!grepl("^W \\(|^FA", fantraxTeams)])
+                       
 #----------------------- NEW GW COLUMNS -----------------------#
 
 #new columns
@@ -257,7 +260,7 @@ ui <- fluidPage(
                           width = "2",
                           
                           selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
-                          selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(overall$Status)), "Waiver"), selected = "All Available"),
+                          selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.MeanMinusDD"),
                           selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "Min.Mean"),
@@ -282,7 +285,7 @@ ui <- fluidPage(
                           width = "2",
                           
                           selectInput("tTeam","Choose a team", choices = c("All",unique(overall$Team)), selected = "All"),
-                          selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(overall$Status), "Waiver"), selected = "All"),
+                          selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All"),
                           selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           sliderInput("tMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("tFPts.Mean", "FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = c(min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE))),
