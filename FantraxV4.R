@@ -285,7 +285,7 @@ ui <- fluidPage(
                           
                           width = "2",
                           
-                          selectInput("tTeam","Choose a team", choices = c("All",unique(overall$Team)), selected = "All"),
+                          selectInput("tTeam","Choose a team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
                           selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All"),
                           selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           sliderInput("tMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
