@@ -5,11 +5,7 @@ library(DT)
 # library(stringi)
 # library(shinyWidgets)
 library(stats)
-# library(PerformanceAnalytics)
-
-#This version will compute the data in real time, not before shiny has loaded. It will be slower but more customizable
-#It might be useful to pre compute all the overall stats (oldest gw to latest), then recompute custom gw windows on the fly
-#Ideally I'd like to compute some data beforehand, like FPts.mean and FPts.90, but I suppose I would have to do so for every gw combination?
+library(PerformanceAnalytics)
 
 #----------------------- SETUP -----------------------#
 
@@ -96,7 +92,7 @@ numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC
 #Variable and calculation combos
 varCombos <- numericColumns
 for(i in numericColumns){
-  for(j in c("SD", "Mean", "Med", "MAD", "DownDev")){
+  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMinusDD")){
     varCombos <- c(varCombos, paste(i, j, sep = ".")) 
   }
 }
@@ -145,8 +141,17 @@ Create_Data <- function(team, status, position, x, y, minMins, minFPts.mean, max
   df <- as.data.frame(tail(gws, n=1))
   df <- select(df, c(ID, Player, Team, Position, Status))
   
+  #this might play up in the unlikely event of a cancelled gameweek
   gwWindow <- gws[startGW:endGW]
   
+  #compute FPts.Mean and FPts.90 for the sliders
+  df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("FPts.Mean" := round(mean(FPts, na.rm = TRUE),2)), by = "Player")
+  for (i in c("FPts", "Min")) {
+    df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
+  }
+  df <- mutate(df, "FPts.90" := round(((FPts / Min)*90),2))
+  
+  #
   for(i in c(x, y)){
     
     var <- strsplit(i, ".", fixed = TRUE)[[1]][1]
@@ -156,8 +161,10 @@ Create_Data <- function(team, status, position, x, y, minMins, minFPts.mean, max
       df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
     }
     else if(calc == "Mean"){
-      df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
-    }
+      if (var != "FPts") {
+        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+      }
+      }
     else if(calc == "Med"){
       df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
     }
@@ -166,21 +173,33 @@ Create_Data <- function(team, status, position, x, y, minMins, minFPts.mean, max
     }
     else if(calc == "DownDev"){
       df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+      df[, ncol(df)] <- as.vector(df[, ncol(df)])
+    }
+    else if(calc == "MeanMinusDD"){
+      if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
+        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+        print("Made {var}.Mean")
+      }
+      if (!(paste(var, "DownDev", sep = ".") %in% colnames(df))) {
+        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+        print("Made {var}.DownDev")
+      }
+      df <- mutate(df, !!paste0(var, ".MeanMinusDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
+    }
+    else if(calc == "90"){
+      for (i in c(var, "Min")) {
+        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}" := sum(get(var))), by = "Player")
+      }
+      df <- mutate(df, "{var}.90" := round(((get(var) / Min)*90),2))
     }
   }
   
-  if (!("FPts.Mean" %in% colnames(df))) {
-    df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("FPts.Mean" := round(mean(FPts, na.rm = TRUE),2)), by = "Player")
-  }
-  df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("FPts" := sum(get(i))), by = "Player")
-  df <- mutate(df, "FPts.90" := round(((FPts / Min)*90),2))
-  
+  #Sidebar Filters
   df <- filter(df, Min >= minMins)
   df <- filter(df, FPts.Mean >= minFPts.mean)
   df <- filter(df, FPts.Mean <= maxFPts.mean)
   df <- filter(df, FPts.90 >= minFPts.90)
   df <- filter(df, FPts.90 <= maxFPts.90)
-  
   if (team != "All") {
     df <- filter(df, Team == team)
   }
@@ -209,9 +228,11 @@ Create_Data <- function(team, status, position, x, y, minMins, minFPts.mean, max
       df <- filter(df, str_detect(df$Position, "F"))
     }
   }
-
+  
+  return(df)
 }
 
+# test <- Create_Data("All", "All", "All", "KP.Mean", "G.DownDev", 10, 1, 30, 1, 30, "1", "38")
 
 #----------------------- UI -----------------------#
 ui <- fluidPage(
@@ -229,13 +250,13 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(sort(overall$Status)), "Waiver"), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.MeanMinusDD"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.DownDev"),
                           selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "Min.Mean"),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pFPts.Mean", "FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = c(min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE))),
                           sliderInput("pFPts.90", "FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
-                          sliderInput("pWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers))),
-                          actionButton("pButton", "Apply")
+                          sliderInput("pWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
+                          # actionButton("pButton", "Apply")
                           
                         ),
                         
@@ -271,11 +292,23 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   output$plot <- renderPlot({
-    df_temp <- Scatter_Plot_Data(input$pTeam, input$pStatus, input$pPosition, input$pXAxis, input$pYAxis, 
+    df_temp <- Create_Data(input$pTeam, input$pStatus, input$pPosition, input$pXAxis, input$pYAxis, 
                                  input$pMinMins, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2],
                                  input$pWindow[1], input$pWindow[2])
     
+    test <- df_temp
     
+    p <- ggplot(df_temp, aes(colour = Position)) + aes_string(input$pYAxis, input$pXAxis) +
+      geom_point() + 
+      geom_text(
+        aes(label = Player), 
+        check_overlap = F,
+        adj = -0.1,
+        vjust="inward"
+      ) + coord_flip(clip = "off") +
+      geom_abline(intercept = c(0), slope = 1, color = c("black"), alpha=0.4)
+    
+    p + theme_classic()
     
   }, res = 90) #the resolution of the plot
   
