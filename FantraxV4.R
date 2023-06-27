@@ -5,6 +5,7 @@ library(DT)
 library(shinyWidgets)
 library(stats)
 library(PerformanceAnalytics)
+library(viridis)
 
 #----------------------- SETUP -----------------------#
 
@@ -146,7 +147,9 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
   #should always be the last df
   df <- template
   
-  #this might play up in the unlikely event of a cancelled gameweek
+  #IS THIS GRABBING THE RIGHT GAMEWEEKS? IS THE MISSING GAMEWEEK MESSING THIS UP?
+  #THERE ARE 38 GAMEWEEKS BUT ONLY 37 DFS IN GW
+  #THIS WILL NEED TO BE FIXED IF THERE IS A SKIPPED GW NEXT SEASON
   gwWindow <- gws[startGW:endGW]
   
   #compute FPts.Mean and FPts.90 for the sliders
@@ -245,7 +248,36 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
   return(df)
 }
 
-# test <- Create_Data("All", "All", "All", c("KP.Mean", "G.DownDev"), 10, 1, 30, 1, 30, "1", "38")
+Create_Player_Data <- function(player1, player2, metric, startGW, endGW){
+  
+  df <- data.frame(Value = numeric(),
+                   Gameweek = numeric(),
+                   Player = character())
+  
+  gwWindow <- gws[startGW:endGW]
+  players <- c(player1)
+
+  if(player2 != "None"){
+    players <- c(players, player2)
+  }
+
+  for(i in players){
+    values <- lapply(gwWindow, function(df) {
+      df[[metric]][df$Player == i]
+    })
+    values <- lapply(values, function(x) ifelse(is_empty(x), 0, x))
+    values <- as.data.frame(do.call(rbind, values))
+    colnames(values)[1] <- "Value"
+    values <- values %>% mutate(Gameweek = row_number())
+    values <- values %>% mutate(Player = i)
+    
+    df <- rbind(df, values)
+  }
+  
+  return(df)
+}
+
+test <- Create_Player_Data("Kevin De Bruyne", "Bukayo Saka", "FPts", 5, 38)
 
 #----------------------- UI -----------------------#
 ui <- fluidPage(
@@ -299,6 +331,25 @@ ui <- fluidPage(
                           DT::dataTableOutput("table")
                         )
                       )
+             ),
+             tabPanel("PlayerPlot",
+                      sidebarLayout(
+                        
+                        sidebarPanel(
+                          
+                          width = "2",
+                          
+                          selectInput("plPlayer1","Select a Player", choices = sort(template$Player), selected = 1),
+                          selectInput("plPlayer2","Select a 2nd Player", choices = c("None", sort(template$Player)), selected = "None"),
+                          selectInput("plMetric","Choose a Metric", choices = sort(numericColumns), selected = "FPts"),
+                          sliderInput("plWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
+                          
+                        ),
+                        
+                        mainPanel(
+                          plotOutput(outputId = "playerPlot",width = "1500px", height = "900px")
+                        )
+                      )
              )
   )
 )
@@ -309,8 +360,6 @@ server <- function(input, output, session) {
     df_temp <- Create_Data(input$pTeam, input$pStatus, input$pPosition, c(input$pXAxis, input$pYAxis), 
                                  input$pMinMins, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2],
                                  input$pWindow[1], input$pWindow[2])
-    
-    test <- df_temp
     
     p <- ggplot(df_temp, aes(colour = Position)) + aes_string(input$pYAxis, input$pXAxis) +
       geom_point() + 
@@ -324,7 +373,7 @@ server <- function(input, output, session) {
     
     p + theme_classic()
     
-  }, res = 90) #the resolution of the plot
+  }, res = 90)
   
   output$table = DT::renderDataTable({
     extraCols <- ("FPts.MeanMinusDD")
@@ -332,6 +381,19 @@ server <- function(input, output, session) {
                              input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2],
                              input$tWindow[1], input$tWindow[2])
   })
+  
+  output$playerPlot <- renderPlot({
+
+    df_temp <- Create_Player_Data(input$plPlayer1, input$plPlayer2, input$plMetric, input$plWindow[1], input$plWindow[2])
+    
+    p <- ggplot(df_temp, aes(x=Gameweek, y=Value, fill=Player)) + 
+      geom_area(stat = "smooth", method = "loess", span = 1/5, alpha=0.5 , size=1, colour="white", position = "identity") + 
+      scale_fill_brewer(palette = "Set1") +
+      ggtitle("Values")
+    
+    p + theme_classic()
+    
+  }, res = 90)
   
   session$onSessionEnded(function() {
     stopApp()
