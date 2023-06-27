@@ -277,7 +277,34 @@ Create_Player_Data <- function(player1, player2, metric, startGW, endGW){
   return(df)
 }
 
-test <- Create_Player_Data("Kevin De Bruyne", "Bukayo Saka", "FPts", 5, 38)
+Create_Player_Dist_Data <- function(player, bucketSize){
+  
+  values <- lapply(gws, function(df) {
+    df$FPts[df$Player == player]
+  })
+  values <- lapply(values, function(x) ifelse(is_empty(x), 0, x))
+  values <- as.data.frame(do.call(rbind, values))
+  colnames(values)[1] <- "Value"
+  
+  max_value <- max(values$Value)
+  upper_limit <- ceiling(max_value)
+  breaks <- seq(0, upper_limit, by = as.numeric(bucketSize))
+  
+  
+  # Adjust the breaks vector if necessary
+  if (max_value > breaks[length(breaks)]) {
+    breaks <- c(breaks, max_value)
+  }
+  
+  labels <- paste(breaks[-length(breaks)], breaks[-1], sep = "-")
+  
+  values$Bucket <- cut(values$Value, breaks = breaks, labels = labels, include.lowest = TRUE)
+  
+  return(values)
+}
+
+# test <- Create_Player_Data("Kevin De Bruyne", "Bukayo Saka", "FPts", 5, 38)
+# test <- Create_Player_Dist_Data("Bukayo Saka", 2)
 
 #----------------------- UI -----------------------#
 ui <- fluidPage(
@@ -350,6 +377,22 @@ ui <- fluidPage(
                           plotOutput(outputId = "playerPlot",width = "1500px", height = "900px")
                         )
                       )
+             ),
+             tabPanel("DistPlot",
+                      sidebarLayout(
+                        
+                        sidebarPanel(
+                          
+                          width = "2",
+                          
+                          selectInput("dPlayer","Select a Player", choices = sort(template$Player), selected = 1),
+                          selectInput("dBuckets","Select Bucket Size", choices = c(1, 2, 4), selected = 1)
+                        ),
+                        
+                        mainPanel(
+                          plotOutput(outputId = "distPlot",width = "1500px", height = "900px")
+                        )
+                      )
              )
   )
 )
@@ -393,6 +436,18 @@ server <- function(input, output, session) {
     
     p + theme_classic()
     
+  }, res = 90)
+  
+  output$distPlot <- renderPlot({
+    
+    df_temp <- Create_Player_Dist_Data(input$dPlayer, input$dBuckets)
+    
+    p <- ggplot(df_temp, aes(x = Bucket)) +
+      geom_histogram(fill = "steelblue", alpha=0.6, color = "white", stat = "count") +
+      labs(x = "Bucket", y = "Count") +
+      ggtitle("Histogram of FPts")
+    
+    p + theme_classic()
   }, res = 90)
   
   session$onSessionEnded(function() {
