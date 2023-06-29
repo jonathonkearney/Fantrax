@@ -56,6 +56,10 @@ gws <- list(
   merge(x = read.csv("FT_GW37.csv", header = TRUE), y = read.csv("FS_GW37.csv", header = TRUE)),
   merge(x = read.csv("FT_GW38.csv", header = TRUE), y = read.csv("FS_GW38.csv", header = TRUE))
 )
+#----------------------- THOUGHTS -----------------------#
+#
+#IS THERE A SECTION WHERE I AM UNCECCESARILY CALCULATING THE .90 AGAIN?
+#
 #----------------------- TEMPLATE -----------------------#
 #Template needs to be made first before you remove rows with 0 mins
 template <- as.data.frame(tail(gws, n=1))
@@ -121,13 +125,8 @@ gws <- lapply(gws, function(x) mutate(x, SOTAndKP = SOT + KP))
 gws <- lapply(gws, function(x) mutate(x, CoSMinusDIS = CoS - DIS))
 gws <- lapply(gws, function(x) mutate(x, SOTMinusG = SOT - G))
 gws <- lapply(gws, function(x) mutate(x, KPMinusA = KP - A))
+gws <- lapply(gws, function(x) mutate(x, FPts.90 := round(((FPts / Min)*90),2)))
 
-#Make .90 columns for all columns minus Min, GP, and GS
-for (i in numericColumns) {
-  if(i != "Min" & i != "GP" & i != "GS"){
-    gws <- lapply(gws, function(x) mutate(x, "{i}.90" := round(((get(i) / Min)*90),2)))
-  }
-}
 #----------------------- FIX DOUBLE GAMEWEEKS -----------------------#
 
 #Has to happen after gw columns have been created
@@ -147,9 +146,7 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
   #should always be the last df
   df <- template
   
-  #IS THIS GRABBING THE RIGHT GAMEWEEKS? IS THE MISSING GAMEWEEK MESSING THIS UP?
-  #THERE ARE 38 GAMEWEEKS BUT ONLY 37 DFS IN GW
-  #THIS WILL NEED TO BE FIXED IF THERE IS A SKIPPED GW NEXT SEASON
+  #THIS WILL NEED TO BE FIXED IF THERE IS A SKIPPED GW NEXT SEASON - as this season its showing 37 gameweeks as 38
   gwWindow <- gws[startGW:endGW]
   
   #compute FPts.Mean and FPts.90 for the sliders
@@ -328,7 +325,6 @@ ui <- fluidPage(
                           sliderInput("pFPts.Mean", "FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = c(min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE))),
                           sliderInput("pFPts.90", "FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
                           sliderInput("pWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
-                          # actionButton("pButton", "Apply")
                           
                         ),
                         
@@ -368,7 +364,7 @@ ui <- fluidPage(
                           
                           selectInput("plPlayer1","Select a Player", choices = sort(template$Player), selected = 1),
                           selectInput("plPlayer2","Select a 2nd Player", choices = c("None", sort(template$Player)), selected = "None"),
-                          selectInput("plMetric","Choose a Metric", choices = sort(numericColumns), selected = "FPts"),
+                          selectInput("plMetric","Choose a Metric", choices = sort(c(numericColumns, "FPts.90")), selected = "FPts.90"),
                           sliderInput("plWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
                           
                         ),
@@ -443,7 +439,7 @@ server <- function(input, output, session) {
     df_temp <- Create_Player_Dist_Data(input$dPlayer, input$dBuckets)
     
     p <- ggplot(df_temp, aes(x = Bucket)) +
-      geom_histogram(fill = "steelblue", alpha=0.6, color = "white", stat = "count") +
+      geom_histogram(fill = "steelblue", alpha=0.6, color = "grey", stat = "count") +
       labs(x = "Bucket", y = "Count") +
       ggtitle("Histogram of FPts")
     
