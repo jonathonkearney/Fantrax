@@ -58,7 +58,7 @@ gws <- list(
 )
 #----------------------- THOUGHTS -----------------------#
 #
-#IS THERE A SECTION WHERE I AM UNCECCESARILY CALCULATING THE .90 AGAIN?
+#All .90 metrics need to be calculated at the end, otherwise you get crazy big numbers like 2000k FPTs per 90
 #
 #----------------------- TEMPLATE -----------------------#
 #Template needs to be made first before you remove rows with 0 mins
@@ -116,7 +116,7 @@ overall <- mutate(overall, "FPts.90" := round(((FPts / Min)*90),2))
 #List of our teams for the status dropdowns
 fantraxTeams <- unique(overall$Status)
 fantraxTeams <- sort(fantraxTeams[!grepl("^W \\(|^FA", fantraxTeams)])
-                       
+
 #----------------------- NEW GW COLUMNS -----------------------#
 
 #new columns
@@ -125,7 +125,6 @@ gws <- lapply(gws, function(x) mutate(x, SOTAndKP = SOT + KP))
 gws <- lapply(gws, function(x) mutate(x, CoSMinusDIS = CoS - DIS))
 gws <- lapply(gws, function(x) mutate(x, SOTMinusG = SOT - G))
 gws <- lapply(gws, function(x) mutate(x, KPMinusA = KP - A))
-gws <- lapply(gws, function(x) mutate(x, FPts.90 := round(((FPts / Min)*90),2)))
 
 #----------------------- FIX DOUBLE GAMEWEEKS -----------------------#
 
@@ -140,8 +139,6 @@ for (i in numericColumns) {
 #----------------------- CREATE DATA FUNCTION -----------------------#
 
 Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, maxFPts.mean, minFPts.90, maxFPts.90, startGW, endGW) {
-  
-  #CALCULATE THE TWO COLUMNS WE NEED, ADD THEM TO THE DF, THEN FILTER THE DF?
   
   #should always be the last df
   df <- template
@@ -253,11 +250,11 @@ Create_Player_Data <- function(player1, player2, metric, startGW, endGW){
   
   gwWindow <- gws[startGW:endGW]
   players <- c(player1)
-
+  
   if(player2 != "None"){
     players <- c(players, player2)
   }
-
+  
   for(i in players){
     values <- lapply(gwWindow, function(df) {
       df[[metric]][df$Player == i]
@@ -364,7 +361,7 @@ ui <- fluidPage(
                           
                           selectInput("plPlayer1","Select a Player", choices = sort(template$Player), selected = 1),
                           selectInput("plPlayer2","Select a 2nd Player", choices = c("None", sort(template$Player)), selected = "None"),
-                          selectInput("plMetric","Choose a Metric", choices = sort(c(numericColumns, "FPts.90")), selected = "FPts.90"),
+                          selectInput("plMetric","Choose a Metric", choices = sort(numericColumns), selected = "FPts"),
                           sliderInput("plWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
                           
                         ),
@@ -397,8 +394,8 @@ server <- function(input, output, session) {
   
   output$plot <- renderPlot({
     df_temp <- Create_Data(input$pTeam, input$pStatus, input$pPosition, c(input$pXAxis, input$pYAxis), 
-                                 input$pMinMins, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2],
-                                 input$pWindow[1], input$pWindow[2])
+                           input$pMinMins, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2],
+                           input$pWindow[1], input$pWindow[2])
     
     p <- ggplot(df_temp, aes(colour = Position)) + aes_string(input$pYAxis, input$pXAxis) +
       geom_point() + 
@@ -417,12 +414,12 @@ server <- function(input, output, session) {
   output$table = DT::renderDataTable({
     extraCols <- ("FPts.MeanMinusDD")
     df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
-                             input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2],
-                             input$tWindow[1], input$tWindow[2])
+                           input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2],
+                           input$tWindow[1], input$tWindow[2])
   })
   
   output$playerPlot <- renderPlot({
-
+    
     df_temp <- Create_Player_Data(input$plPlayer1, input$plPlayer2, input$plMetric, input$plWindow[1], input$plWindow[2])
     
     p <- ggplot(df_temp, aes(x=Gameweek, y=Value, fill=Player)) + 
