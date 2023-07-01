@@ -100,7 +100,7 @@ numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC
 #Variable and calculation combos
 varCombos <- numericColumns
 for(i in numericColumns){
-  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMinusDD")){
+  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMinusDD", "MeanMedDiff")){
     varCombos <- c(varCombos, paste(i, j, sep = ".")) 
   }
 }
@@ -186,19 +186,53 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
           df[, ncol(df)] <- as.vector(df[, ncol(df)])
         }
         else if(calc == "MeanMinusDD"){
+          removeMean <- FALSE
+          removeDD <- FALSE
           if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
             df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+            removeMean <- TRUE
           }
           if (!(paste(var, "DownDev", sep = ".") %in% colnames(df))) {
             df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+            removeDD <- TRUE
           }
           df <- mutate(df, !!paste0(var, ".MeanMinusDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
+          if(removeMean == TRUE){
+            df <- subset(df, select = -get(paste0(var, ".Mean")))
+          }
+          if(removeDD == TRUE){
+            df <- subset(df, select = -get(paste0(var, ".DownDev")))
+          }
         }
         else if(calc == "90"){
-          for (i in c(var, "Min")) {
+          removeVar = FALSE
+          if (!(var %in% colnames(df))) {
             df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}" := sum(get(var))), by = "Player")
+            removeVar = TRUE
           }
           df <- mutate(df, "{var}.90" := round(((get(var) / Min)*90),2))
+          if(removeVar == TRUE){
+            df <- subset(df, select = -get(var))
+          }
+        }
+        else if(calc == "MeanMedDiff"){
+          removeMean <- FALSE
+          removeMed <- FALSE
+          if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
+            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+            removeMean <- TRUE
+          }
+          if (!(paste(var, "Med", sep = ".") %in% colnames(df))) {
+            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
+            removeMed <- TRUE
+          }
+          df <- mutate(df, "{var}.MeanMedDiff" := abs(get(paste0(var, ".Mean")) - get(paste0(var, ".Med"))))
+          if(removeMean == TRUE){
+            df <- subset(df, select = -get(paste0(var, ".Mean")))
+          }
+          if(removeMed == TRUE){
+            df <- subset(df, select = -get(paste0(var, ".Med")))
+          }
         }
       }
     }
