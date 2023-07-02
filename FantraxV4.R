@@ -100,7 +100,7 @@ numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC
 #Variable and calculation combos
 varCombos <- numericColumns
 for(i in numericColumns){
-  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMinusDD", "MeanMedDiff")){
+  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMinusDD")){
     varCombos <- c(varCombos, paste(i, j, sep = ".")) 
   }
 }
@@ -215,25 +215,6 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
             df <- subset(df, select = -get(var))
           }
         }
-        else if(calc == "MeanMedDiff"){
-          removeMean <- FALSE
-          removeMed <- FALSE
-          if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
-            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
-            removeMean <- TRUE
-          }
-          if (!(paste(var, "Med", sep = ".") %in% colnames(df))) {
-            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
-            removeMed <- TRUE
-          }
-          df <- mutate(df, "{var}.MeanMedDiff" := abs(get(paste0(var, ".Mean")) - get(paste0(var, ".Med"))))
-          if(removeMean == TRUE){
-            df <- subset(df, select = -get(paste0(var, ".Mean")))
-          }
-          if(removeMed == TRUE){
-            df <- subset(df, select = -get(paste0(var, ".Med")))
-          }
-        }
       }
     }
   }
@@ -331,8 +312,96 @@ Create_Player_Dist_Data <- function(player, bucketSize){
   return(values)
 }
 
-# test <- Create_Player_Data("Kevin De Bruyne", "Bukayo Saka", "FPts", 5, 38)
-# test <- Create_Player_Dist_Data("Bukayo Saka", 2)
+Create_Team_Table <- function(vars, calc, startGW, endGW){
+  
+  df <- template
+  
+  for(i in vars){
+    
+    #If the new column to be added is already in the dataframe then skip to the end of the function
+    if(!(i %in% colnames(df))){
+      
+      #if it doesn't contain a . then it must be just the var without a calc (e.g. the sum of the var)
+      if (!(grepl("\\.", i))) {
+        df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
+      }
+      else{
+        var <- strsplit(i, ".", fixed = TRUE)[[1]][1]
+        calc <- strsplit(i, ".", fixed = TRUE)[[1]][2]
+        
+        if(calc == "SD"){
+          df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
+        }
+        else if(calc == "Mean"){
+          df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+        }
+        else if(calc == "Med"){
+          df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
+        }
+        else if(calc == "MAD"){
+          df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
+        }
+        else if(calc == "DownDev"){
+          df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+          df[, ncol(df)] <- as.vector(df[, ncol(df)])
+        }
+        else if(calc == "MeanMinusDD"){
+          removeMean <- FALSE
+          removeDD <- FALSE
+          if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
+            df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+            removeMean <- TRUE
+          }
+          if (!(paste(var, "DownDev", sep = ".") %in% colnames(df))) {
+            df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+            removeDD <- TRUE
+          }
+          df <- mutate(df, !!paste0(var, ".MeanMinusDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
+          if(removeMean == TRUE){
+            df <- subset(df, select = -get(paste0(var, ".Mean")))
+          }
+          if(removeDD == TRUE){
+            df <- subset(df, select = -get(paste0(var, ".DownDev")))
+          }
+        }
+        else if(calc == "90"){
+          removeVar = FALSE
+          removeMin = FALSE
+          if (!(var %in% colnames(df))) {
+            df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}" := sum(get(var))), by = "Player")
+            removeVar = TRUE
+          }
+          if (!("Min" %in% colnames(df))) {
+            df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise(Min := sum(Min)), by = "Player")
+            removeMin = TRUE
+          }
+          df <- mutate(df, "{var}.90" := round(((get(var) / Min)*90),2))
+          if(removeVar == TRUE){
+            df <- subset(df, select = -get(var))
+          }
+          if(removeMin == TRUE){
+            df <- subset(df, select = -Min)
+          }
+        }
+      }
+    }
+  }
+  
+  Status <- unique(df$Status)
+  dfFinal <- as.data.frame(Status)
+  
+  for(var in vars){
+    temp <- df %>% group_by(Status) %>% summarise("{var}" := sum(get(var)))
+    dfFinal <- left_join(dfFinal, temp, by = "Status")
+  }
+  
+  dfFinal <- dfFinal[!grepl("^W \\(", dfFinal$Status), ]
+  
+  return(dfFinal)
+}
+
+# test <- Create_Team_Table(1, 38)
+
 
 #----------------------- UI -----------------------#
 ui <- fluidPage(
@@ -420,6 +489,22 @@ ui <- fluidPage(
                           plotOutput(outputId = "distPlot",width = "1500px", height = "900px")
                         )
                       )
+             ),
+             tabPanel("Team Stats",
+                       sidebarLayout(
+                         
+                         sidebarPanel(
+                           
+                           width = "2",
+                           
+                           selectInput("sMetric","Add a column", choices = c("None", sort(varCombos)), selected = 1),
+                           selectInput("sCalc","Select the table calculation", choices = c("Sum", "Mean"), selected = 1)
+                         ),
+                         
+                         mainPanel(
+                           DT::dataTableOutput("teamTable")
+                         )
+                       )
              )
   )
 )
@@ -476,6 +561,19 @@ server <- function(input, output, session) {
     
     p + theme_classic()
   }, res = 90)
+  
+  output$teamTable = DT::renderDataTable({
+    
+    #
+    #Need to make it so that the default table rows is 12, not 10
+    #
+    
+    cols <- c("Min.Mean", "FPts.Mean", "G.Mean", "A.Mean", "KP.Mean", "S.Mean", "SOT.Mean", "AP.Mean", "SFTP.Mean")
+    if(input$sMetric != "None"){
+      cols <- c(cols, input$sMetric)
+    }
+    df_temp <- Create_Team_Table(cols, input$sCalc)
+  })
   
   session$onSessionEnded(function() {
     stopApp()
