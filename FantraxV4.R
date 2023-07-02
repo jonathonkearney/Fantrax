@@ -312,9 +312,11 @@ Create_Player_Dist_Data <- function(player, bucketSize){
   return(values)
 }
 
-Create_Team_Table <- function(vars, calc, startGW, endGW){
+Create_Team_Table <- function(vars){
   
   df <- template
+  dfFinal <- as.data.frame(unique(df$Status))
+  colnames(dfFinal)[] <- "Status"
   
   for(i in vars){
     
@@ -384,23 +386,16 @@ Create_Team_Table <- function(vars, calc, startGW, endGW){
           }
         }
       }
+      temp <- df %>% group_by(Status) %>% summarise("{i}" := sum(get(i)))
+      dfFinal <- left_join(dfFinal, temp, by = "Status")
     }
   }
   
-  Status <- unique(df$Status)
-  dfFinal <- as.data.frame(Status)
-  
-  for(var in vars){
-    temp <- df %>% group_by(Status) %>% summarise("{var}" := sum(get(var)))
-    dfFinal <- left_join(dfFinal, temp, by = "Status")
-  }
-  
   dfFinal <- dfFinal[!grepl("^W \\(", dfFinal$Status), ]
-  
   return(dfFinal)
 }
 
-# test <- Create_Team_Table(1, 38)
+test <- Create_Team_Table(c("Min.Mean", "FPts.Mean", "G.Mean", "A.Mean", "KP.Mean", "S.Mean", "SOT.Mean", "AP.Mean", "SFTP.Mean"))
 
 
 #----------------------- UI -----------------------#
@@ -497,8 +492,7 @@ ui <- fluidPage(
                            
                            width = "2",
                            
-                           selectInput("sMetric","Add a column", choices = c("None", sort(varCombos)), selected = 1),
-                           selectInput("sCalc","Select the table calculation", choices = c("Sum", "Mean"), selected = 1)
+                           pickerInput("sPicker", "Columns", choices = sort(varCombos), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
                          ),
                          
                          mainPanel(
@@ -563,16 +557,14 @@ server <- function(input, output, session) {
   }, res = 90)
   
   output$teamTable = DT::renderDataTable({
+
+    cols <- c("Min.Mean", "FPts.Mean", "G.Mean", "A.Mean", "KP.Mean",
+              "S.Mean", "SOT.Mean", "AP.Mean", "SFTP.Mean", input$sPicker)
     
-    #
-    #Need to make it so that the default table rows is 12, not 10
-    #
-    
-    cols <- c("Min.Mean", "FPts.Mean", "G.Mean", "A.Mean", "KP.Mean", "S.Mean", "SOT.Mean", "AP.Mean", "SFTP.Mean")
-    if(input$sMetric != "None"){
-      cols <- c(cols, input$sMetric)
-    }
-    df_temp <- Create_Team_Table(cols, input$sCalc)
+    df_temp <- datatable(
+      Create_Team_Table(cols),
+      options = list(paging = F)
+      )
   })
   
   session$onSessionEnded(function() {
