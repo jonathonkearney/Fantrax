@@ -7,6 +7,11 @@ library(stats)
 library(PerformanceAnalytics)
 library(viridis)
 
+#----------------------- THOUGHTS -----------------------#
+#
+#All .90 metrics need to be calculated at the end, otherwise you get crazy big numbers like 2000k FPTs per 90
+#Check FPts.Mean against FPts.GP on Fantrax regularly throughout the season
+#
 #----------------------- SETUP -----------------------#
 
 rm(list = ls())
@@ -16,51 +21,20 @@ setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxV4")
 
 #----------------------- LOADING DATA -----------------------#
 
-gws <- list(
-  merge(x = read.csv("FT_GW1.csv", header = TRUE), y = read.csv("FS_GW1.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW2.csv", header = TRUE), y = read.csv("FS_GW2.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW3.csv", header = TRUE), y = read.csv("FS_GW3.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW4.csv", header = TRUE), y = read.csv("FS_GW4.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW5.csv", header = TRUE), y = read.csv("FS_GW5.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW6.csv", header = TRUE), y = read.csv("FS_GW6.csv", header = TRUE)),
-  # merge(x = read.csv("FT_GW7.csv", header = TRUE), y = read.csv("FS_GW7.csv", header = TRUE))
-  merge(x = read.csv("FT_GW8.csv", header = TRUE), y = read.csv("FS_GW8.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW9.csv", header = TRUE), y = read.csv("FS_GW9.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW10.csv", header = TRUE), y = read.csv("FS_GW10.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW11.csv", header = TRUE), y = read.csv("FS_GW11.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW12.csv", header = TRUE), y = read.csv("FS_GW12.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW13.csv", header = TRUE), y = read.csv("FS_GW13.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW14.csv", header = TRUE), y = read.csv("FS_GW14.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW15.csv", header = TRUE), y = read.csv("FS_GW15.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW16.csv", header = TRUE), y = read.csv("FS_GW16.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW17.csv", header = TRUE), y = read.csv("FS_GW17.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW18.csv", header = TRUE), y = read.csv("FS_GW18.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW19.csv", header = TRUE), y = read.csv("FS_GW19.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW20.csv", header = TRUE), y = read.csv("FS_GW20.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW21.csv", header = TRUE), y = read.csv("FS_GW21.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW22.csv", header = TRUE), y = read.csv("FS_GW22.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW23.csv", header = TRUE), y = read.csv("FS_GW23.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW24.csv", header = TRUE), y = read.csv("FS_GW24.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW25.csv", header = TRUE), y = read.csv("FS_GW25.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW26.csv", header = TRUE), y = read.csv("FS_GW26.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW27.csv", header = TRUE), y = read.csv("FS_GW27.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW28.csv", header = TRUE), y = read.csv("FS_GW28.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW29.csv", header = TRUE), y = read.csv("FS_GW29.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW30.csv", header = TRUE), y = read.csv("FS_GW30.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW31.csv", header = TRUE), y = read.csv("FS_GW31.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW32.csv", header = TRUE), y = read.csv("FS_GW32.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW33.csv", header = TRUE), y = read.csv("FS_GW33.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW34.csv", header = TRUE), y = read.csv("FS_GW34.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW35.csv", header = TRUE), y = read.csv("FS_GW35.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW36.csv", header = TRUE), y = read.csv("FS_GW36.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW37.csv", header = TRUE), y = read.csv("FS_GW37.csv", header = TRUE)),
-  merge(x = read.csv("FT_GW38.csv", header = TRUE), y = read.csv("FS_GW38.csv", header = TRUE))
-)
-#----------------------- THOUGHTS -----------------------#
-#
-#All .90 metrics need to be calculated at the end, otherwise you get crazy big numbers like 2000k FPTs per 90
-#
+files <- list.files(path = "Gameweeks")
+FTList <- files[grep("^FT", files, ignore.case = TRUE)]
+FSList <- files[grep("^FS", files, ignore.case = TRUE)]
+
+gws <- list()
+for(i in 1:length(FTList)){
+  FT <- paste0("Gameweeks/", FTList[i])
+  FS <- paste0("Gameweeks/", FSList[i])
+  
+  gameweek <- merge(x = read.csv(FT, header = TRUE), y = read.csv(FS, header = TRUE))
+  gws[[i]] <- gameweek
+}
 #----------------------- TEMPLATE -----------------------#
+
 #Template needs to be made first before you remove rows with 0 mins
 template <- as.data.frame(tail(gws, n=1))
 template <- select(template, c(Player, Team, Position, Status))
@@ -81,13 +55,22 @@ gws <- lapply(gws, function(x) mutate(x, Opponent = ifelse(startsWith(x$Opponent
 #Remove the row if they didnt play e.g. Min == 0 (because 0's mess up SD)
 gws <- lapply(gws, function(x) subset(x, Min != 0))
 
+#----------------------- NEW GW COLUMNS -----------------------#
+
+#new columns
+gws <- lapply(gws, function(x) mutate(x, TkWAndIntAndCLR = TkW + Int + CLR))
+gws <- lapply(gws, function(x) mutate(x, SOTAndKP = SOT + KP))
+gws <- lapply(gws, function(x) mutate(x, CoSMinusDIS = CoS - DIS))
+gws <- lapply(gws, function(x) mutate(x, SOTMinusG = SOT - G))
+gws <- lapply(gws, function(x) mutate(x, KPMinusA = KP - A))
+
 #----------------------- GLOBAL VARIABLES -----------------------#
 
 #Statuses
 statuses <- c("W (Mon)", "W (Tue)", "W (Wed)", "W (Thu)", "W (Fri)", "W (Sat)", "W (Sun)", "FA")
 
 #Gameweek numbers
-gwNumbers <- list.files(pattern = "^FS.*", full.names = FALSE)
+gwNumbers <- list.files(path = "Gameweeks", pattern = "^FS.*", full.names = FALSE)
 gwNumbers <- lapply(gwNumbers, function(s) substr(s, 6, nchar(s) - 4))
 gwNumbers <- sort(as.numeric(gwNumbers))
 
@@ -117,15 +100,6 @@ overall <- mutate(overall, "FPts.90" := round(((FPts / Min)*90),2))
 fantraxTeams <- unique(overall$Status)
 fantraxTeams <- sort(fantraxTeams[!grepl("^W \\(|^FA", fantraxTeams)])
 
-#----------------------- NEW GW COLUMNS -----------------------#
-
-#new columns
-gws <- lapply(gws, function(x) mutate(x, TkWAndIntAndCLR = TkW + Int + CLR))
-gws <- lapply(gws, function(x) mutate(x, SOTAndKP = SOT + KP))
-gws <- lapply(gws, function(x) mutate(x, CoSMinusDIS = CoS - DIS))
-gws <- lapply(gws, function(x) mutate(x, SOTMinusG = SOT - G))
-gws <- lapply(gws, function(x) mutate(x, KPMinusA = KP - A))
-
 #----------------------- FIX DOUBLE GAMEWEEKS -----------------------#
 
 #Has to happen after gw columns have been created
@@ -143,81 +117,10 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
   #should always be the last df
   df <- template
   
-  #THIS WILL NEED TO BE FIXED IF THERE IS A SKIPPED GW NEXT SEASON - as this season its showing 37 gameweeks as 38
-  gwWindow <- gws[startGW:endGW]
+  # gwWindow <- gws[startGW:endGW]
   
-  #compute FPts.Mean and FPts.90 for the sliders
-  df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("FPts.Mean" := round(mean(FPts, na.rm = TRUE),2)), by = "Player")
-  for (i in c("FPts", "Min")) {
-    df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
-  }
-  df <- mutate(df, "FPts.90" := round(((FPts / Min)*90),2))
-  
-  #calculate and add the new columns
-  for(i in vars){
-    
-    #If the new column to be added is already in the dataframe then skip to the end of the function
-    if(!(i %in% colnames(df))){
-      
-      #if it doesn't contain a . then it must be just the var without a calc (e.g. the sum of the var)
-      if (!(grepl("\\.", i))) {
-        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
-      }
-      else{
-        var <- strsplit(i, ".", fixed = TRUE)[[1]][1]
-        calc <- strsplit(i, ".", fixed = TRUE)[[1]][2]
-        
-        if(calc == "SD"){
-          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
-        }
-        else if(calc == "Mean"){
-          if (var != "FPts") {
-            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
-          }
-        }
-        else if(calc == "Med"){
-          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
-        }
-        else if(calc == "MAD"){
-          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
-        }
-        else if(calc == "DownDev"){
-          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
-          df[, ncol(df)] <- as.vector(df[, ncol(df)])
-        }
-        else if(calc == "MeanMinusDD"){
-          removeMean <- FALSE
-          removeDD <- FALSE
-          if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
-            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
-            removeMean <- TRUE
-          }
-          if (!(paste(var, "DownDev", sep = ".") %in% colnames(df))) {
-            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
-            removeDD <- TRUE
-          }
-          df <- mutate(df, !!paste0(var, ".MeanMinusDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
-          if(removeMean == TRUE){
-            df <- subset(df, select = -get(paste0(var, ".Mean")))
-          }
-          if(removeDD == TRUE){
-            df <- subset(df, select = -get(paste0(var, ".DownDev")))
-          }
-        }
-        else if(calc == "90"){
-          removeVar = FALSE
-          if (!(var %in% colnames(df))) {
-            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}" := sum(get(var))), by = "Player")
-            removeVar = TRUE
-          }
-          df <- mutate(df, "{var}.90" := round(((get(var) / Min)*90),2))
-          if(removeVar == TRUE){
-            df <- subset(df, select = -get(var))
-          }
-        }
-      }
-    }
-  }
+  #All tables need Min, FPts.Mean, FPts.90 for the sliders
+  df <- Add_Columns(df, c("Min", "FPts.Mean", "FPts.90", vars), startGW, endGW)
   
   #Sidebar Filters
   df <- filter(df, Min >= minMins)
@@ -299,8 +202,6 @@ Create_Player_Dist_Data <- function(player, bucketSize){
   upper_limit <- ceiling(max_value)
   breaks <- seq(0, upper_limit, by = as.numeric(bucketSize))
   
-  
-  # Adjust the breaks vector if necessary
   if (max_value > breaks[length(breaks)]) {
     breaks <- c(breaks, max_value)
   }
@@ -315,47 +216,66 @@ Create_Player_Dist_Data <- function(player, bucketSize){
 Create_Team_Table <- function(vars){
   
   df <- template
+  
+  df <- Add_Columns(df, vars, 1, length(gwNumbers))
+  
   dfFinal <- as.data.frame(unique(df$Status))
   colnames(dfFinal)[] <- "Status"
   
   for(i in vars){
+    if(!(i %in% colnames(dfFinal))){
+      temp <- df %>% group_by(Status) %>% summarise("{i}" := sum(get(i)))
+      dfFinal <- left_join(dfFinal, temp, by = "Status")
+    }
+  }
+  
+  dfFinal <- dfFinal[!grepl("^W \\(", dfFinal$Status), ]
+  return(dfFinal)
+}
+
+Add_Columns <- function(df, cols, startGW, endGW){
+  
+  gwWindow <- gws[startGW:endGW]
+  
+  #calculate and add the new columns
+  for(i in cols){
     
     #If the new column to be added is already in the dataframe then skip to the end of the function
     if(!(i %in% colnames(df))){
       
       #if it doesn't contain a . then it must be just the var without a calc (e.g. the sum of the var)
       if (!(grepl("\\.", i))) {
-        df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
+        df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{i}" := sum(get(i))), by = "Player")
       }
       else{
         var <- strsplit(i, ".", fixed = TRUE)[[1]][1]
         calc <- strsplit(i, ".", fixed = TRUE)[[1]][2]
         
         if(calc == "SD"){
-          df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
+          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
         }
         else if(calc == "Mean"){
-          df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
         }
         else if(calc == "Med"){
-          df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
+          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
         }
         else if(calc == "MAD"){
-          df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
+          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
         }
         else if(calc == "DownDev"){
-          df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+          df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
           df[, ncol(df)] <- as.vector(df[, ncol(df)])
         }
         else if(calc == "MeanMinusDD"){
           removeMean <- FALSE
           removeDD <- FALSE
           if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
-            df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
             removeMean <- TRUE
           }
           if (!(paste(var, "DownDev", sep = ".") %in% colnames(df))) {
-            df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
             removeDD <- TRUE
           }
           df <- mutate(df, !!paste0(var, ".MeanMinusDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
@@ -370,11 +290,11 @@ Create_Team_Table <- function(vars){
           removeVar = FALSE
           removeMin = FALSE
           if (!(var %in% colnames(df))) {
-            df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise("{var}" := sum(get(var))), by = "Player")
+            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise("{var}" := sum(get(var))), by = "Player")
             removeVar = TRUE
           }
           if (!("Min" %in% colnames(df))) {
-            df <- left_join(df, bind_rows(gws) %>% group_by(Player) %>% summarise(Min := sum(Min)), by = "Player")
+            df <- left_join(df, bind_rows(gwWindow) %>% group_by(Player) %>% summarise(Min := sum(Min)), by = "Player")
             removeMin = TRUE
           }
           df <- mutate(df, "{var}.90" := round(((get(var) / Min)*90),2))
@@ -386,17 +306,10 @@ Create_Team_Table <- function(vars){
           }
         }
       }
-      temp <- df %>% group_by(Status) %>% summarise("{i}" := sum(get(i)))
-      dfFinal <- left_join(dfFinal, temp, by = "Status")
     }
   }
-  
-  dfFinal <- dfFinal[!grepl("^W \\(", dfFinal$Status), ]
-  return(dfFinal)
+  return(df)
 }
-
-test <- Create_Team_Table(c("Min.Mean", "FPts.Mean", "G.Mean", "A.Mean", "KP.Mean", "S.Mean", "SOT.Mean", "AP.Mean", "SFTP.Mean"))
-
 
 #----------------------- UI -----------------------#
 ui <- fluidPage(
