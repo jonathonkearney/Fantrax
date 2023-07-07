@@ -107,21 +107,16 @@ doubleGws <- unique(doubleGwRows$Gameweek)
 
 #----------------------- FIX DOUBLE GAMEWEEKS -----------------------#
 
-newRows <- data.frame()
-for (i in 1:nrow(gwdf)) {
-  if(gwdf$GP[i] == 2){
-    newRow <- gwdf[i,]
-    newRow$Gameweek <- newRow$Gameweek + 0.5
-    for(col in colnames(gwdf)){
-      if(!(col %in% characterColumns)){
-        newRow[,col] <- newRow[,col] / 2
-        gwdf[i,col] <- gwdf[i,col] / 2
-      }
-    }
-    newRows <- rbind(newRows, newRow)
-  }
-}
-gwdf <- rbind(gwdf, newRows)
+DGWRows <- gwdf[gwdf$GP == 2, ]
+newRows <- gwdf[gwdf$GP == 2, ]
+newRows$Gameweek <- newRows$Gameweek + 0.5
+
+DGWRows[, numericColumns] <- DGWRows[, numericColumns] / 2
+newRows[, numericColumns] <- newRows[, numericColumns] / 2
+
+gwdf <- subset(gwdf, GP != 2)
+DGWRowsAndNewRows <- rbind(DGWRows, newRows)
+gwdf <- rbind(gwdf, DGWRowsAndNewRows)
 
 #----------------------- FUNCTIONS -----------------------#
 
