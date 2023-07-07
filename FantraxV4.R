@@ -106,19 +106,6 @@ for (i in numericColumns) {
   }
 }
 
-#----------------------- CREATE FILTERS REFERENCES -----------------------#
-#create basic overall dataframe, so that you have min/max for sliders
-overall <- template
-overall <- left_join(overall, summarise(group_by(gwdf, Player), "FPts.Mean" := mean(FPts, na.rm = TRUE)), by = "Player")
-for (i in c("FPts", "Min")) {
-  overall <- left_join(overall, summarise(group_by(gwdf, Player), "{i}" := sum(get(i))), by = "Player")
-}
-overall <- mutate(overall, "FPts.90" := round(((FPts / Min)*90),2))
-
-#List of our teams for the status dropdowns
-fantraxTeams <- unique(overall$Status)
-fantraxTeams <- sort(fantraxTeams[!grepl("^W \\(|^FA", fantraxTeams)])
-
 #----------------------- FUNCTIONS -----------------------#
 
 Add_Columns <- function(df, cols, startGW, endGW){
@@ -198,9 +185,16 @@ Add_Columns <- function(df, cols, startGW, endGW){
   return(df)
 }
 
+test <- template
+test <- Add_Columns(test, c("A.90", "SFTP"), 1, 38)
+
 Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, maxFPts.mean, minFPts.90, maxFPts.90, startGW, endGW) {
   
   df <- template
+  
+  if("Kevin De Bruyne" %in% df$Player){
+    print("Kevin's here1")
+  }
   
   #All tables need Min, FPts.Mean, FPts.90 for the sliders
   df <- Add_Columns(df, c("Min", "FPts.Mean", "FPts.90", vars), startGW, endGW)
@@ -210,6 +204,7 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
   df <- filter(df, FPts.Mean <= maxFPts.mean)
   df <- filter(df, FPts.90 >= minFPts.90)
   df <- filter(df, FPts.90 <= maxFPts.90)
+  
   if (team != "All") {
     df <- filter(df, Team == team)
   }
@@ -238,7 +233,7 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
       df <- filter(df, str_detect(df$Position, "F"))
     }
   }
-  
+
   return(df)
 }
 
@@ -309,6 +304,15 @@ Create_Team_Table <- function(vars){
   dfFinal <- dfFinal[!grepl("^W \\(", dfFinal$Status), ]
   return(dfFinal)
 }
+
+#----------------------- CREATE FILTERS REFERENCES -----------------------#
+#create basic overall dataframe, so that you have min/max for sliders
+overall <- template
+overall <- Add_Columns(overall, c("Min", "FPts.Mean", "FPts.90"), 1, max(gwNumbers)) 
+
+#List of our teams for the status dropdowns
+fantraxTeams <- unique(overall$Status)
+fantraxTeams <- sort(fantraxTeams[!grepl("^W \\(|^FA", fantraxTeams)])
 
 #----------------------- UI -----------------------#
 ui <- fluidPage(
