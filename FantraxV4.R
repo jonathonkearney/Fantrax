@@ -130,37 +130,37 @@ Add_Columns <- function(df, cols, startGW, endGW){
       
       #if it doesn't contain a . then it must be just the var without a calc (e.g. the sum of the var)
       if (!(grepl("\\.", i))) {
-        df <- left_join(df, summarise(group_by(gwdf, Player), "{i}" := sum(get(i))), by = "Player")
+        df <- left_join(df, summarise(group_by(gwWindow, Player), "{i}" := sum(get(i))), by = "Player")
       }
       else{
         var <- strsplit(i, ".", fixed = TRUE)[[1]][1]
         calc <- strsplit(i, ".", fixed = TRUE)[[1]][2]
         
         if(calc == "SD"){
-          df <- left_join(df, summarise(group_by(gwdf, Player), "{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
+          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
         }
         else if(calc == "Mean"){
-          df <- left_join(df, summarise(group_by(gwdf, Player), "{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
         }
         else if(calc == "Med"){
-          df <- left_join(df, summarise(group_by(gwdf, Player), "{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
+          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
         }
         else if(calc == "MAD"){
-          df <- left_join(df, summarise(group_by(gwdf, Player), "{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
+          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
         }
         else if(calc == "DownDev"){
-          df <- left_join(df,  summarise(group_by(gwdf, Player), "{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+          df <- left_join(df,  summarise(group_by(gwWindow, Player), "{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
           df[, ncol(df)] <- as.vector(df[, ncol(df)])
         }
         else if(calc == "MeanMinusDD"){
           removeMean <- FALSE
           removeDD <- FALSE
           if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
-            df <- left_join(df, summarise(group_by(gwdf, Player), "{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+            df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
             removeMean <- TRUE
           }
           if (!(paste(var, "DownDev", sep = ".") %in% colnames(df))) {
-            df <- left_join(df, summarise(group_by(gwdf, Player), "{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+            df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
             df[, ncol(df)] <- as.vector(df[, ncol(df)])
             removeDD <- TRUE
           }
@@ -176,11 +176,11 @@ Add_Columns <- function(df, cols, startGW, endGW){
           removeVar = FALSE
           removeMin = FALSE
           if (!(var %in% colnames(df))) {
-            df <- left_join(df, summarise(group_by(gwdf, Player), "{var}" := sum(get(var))), by = "Player")
+            df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}" := sum(get(var))), by = "Player")
             removeVar = TRUE
           }
           if (!("Min" %in% colnames(df))) {
-            df <- left_join(df, summarise(group_by(gwdf, Player), Min := sum(Min)), by = "Player")
+            df <- left_join(df, summarise(group_by(gwWindow, Player), Min := sum(Min)), by = "Player")
             removeMin = TRUE
           }
           df <- mutate(df, "{var}.90" := round(((get(var) / Min)*90),2))
