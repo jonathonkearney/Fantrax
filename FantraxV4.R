@@ -15,6 +15,8 @@ library(viridis)
 #
 #Removing all Min == 0 rows is cleaner than making the values NA
 #
+#If there end up being 3 games in a gameweek then the code for fixing double gameweeks will need to change
+#
 #----------------------- SETUP -----------------------#
 
 rm(list = ls())
@@ -45,7 +47,6 @@ gwdf$Gameweek <- as.numeric(gwdf$Gameweek)
 #Template needs to be made first before you remove rows with 0 mins
 template <- subset(gwdf, Gameweek == max(gwdf$Gameweek))
 template <- select(template, c(Player, Team, Position, Status))
-
 
 #----------------------- DATA CLEANING -----------------------#
 
@@ -83,6 +84,9 @@ gwNumbers <- list.files(path = "Gameweeks", pattern = "^FS.*", full.names = FALS
 gwNumbers <- lapply(gwNumbers, function(s) substr(s, 6, nchar(s) - 4))
 gwNumbers <- sort(as.numeric(gwNumbers))
 
+characterColumns <- c("Gameweek", "ID", "Player", "Team", "Position", "RkOv",
+                      "Status", "Opponent", "Ros..", "X...", "PC.", "HomeOrAway")
+
 numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
                      "AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
                      "CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",         
@@ -96,15 +100,28 @@ for(i in numericColumns){
     varCombos <- c(varCombos, paste(i, j, sep = ".")) 
   }
 }
+
+#Identify double gameweeks
+doubleGwRows <- subset(gwdf, GP == 2)
+doubleGws <- unique(doubleGwRows$Gameweek)
+
 #----------------------- FIX DOUBLE GAMEWEEKS -----------------------#
 
-#Has to happen after gw columns have been created
-#Divide double gw columns by 2
-for (i in numericColumns) {
-  if(i != "GP" & i != "GS"){
-    gwdf <- mutate(gwdf, "{i}" := ifelse(gwdf$GP == 2, get(i)/2, get(i)))
+newRows <- data.frame()
+for (i in 1:nrow(gwdf)) {
+  if(gwdf$GP[i] == 2){
+    newRow <- gwdf[i,]
+    newRow$Gameweek <- newRow$Gameweek + 0.5
+    for(col in colnames(gwdf)){
+      if(!(col %in% characterColumns)){
+        newRow[,col] <- newRow[,col] / 2
+        gwdf[i,col] <- gwdf[i,col] / 2
+      }
+    }
+    newRows <- rbind(newRows, newRow)
   }
 }
+gwdf <- rbind(gwdf, newRows)
 
 #----------------------- FUNCTIONS -----------------------#
 
@@ -192,10 +209,6 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
   
   df <- template
   
-  if("Kevin De Bruyne" %in% df$Player){
-    print("Kevin's here1")
-  }
-  
   #All tables need Min, FPts.Mean, FPts.90 for the sliders
   df <- Add_Columns(df, c("Min", "FPts.Mean", "FPts.90", vars), startGW, endGW)
   
@@ -263,26 +276,6 @@ Create_Player_Data <- function(player1, player2, metric, startGW, endGW){
   }
   
   return(df)
-}
-
-Create_Player_Dist_Data <- function(player, bucketSize){
-  
-  values <- gwdf$FPts[gwdf$Player == player]
-  values <- as.data.frame(values)
-  colnames(values)[1] <- "Value"
-  max_value <- max(values$Value)
-  upper_limit <- ceiling(max_value)
-  breaks <- seq(0, upper_limit, by = as.numeric(bucketSize))
-  
-  if (max_value > breaks[length(breaks)]) {
-    breaks <- c(breaks, max_value)
-  }
-  
-  labels <- paste(breaks[-length(breaks)], breaks[-1], sep = "-")
-  
-  values$Bucket <- cut(values$Value, breaks = breaks, labels = labels, include.lowest = TRUE)
-  
-  return(values)
 }
 
 Create_Team_Table <- function(vars){
@@ -385,22 +378,6 @@ ui <- fluidPage(
                         )
                       )
              ),
-             tabPanel("DistPlot",
-                      sidebarLayout(
-                        
-                        sidebarPanel(
-                          
-                          width = "2",
-                          
-                          selectInput("dPlayer","Select a Player", choices = sort(template$Player), selected = 1),
-                          selectInput("dBuckets","Select Bucket Size", choices = c(1, 2, 4), selected = 1)
-                        ),
-                        
-                        mainPanel(
-                          plotOutput(outputId = "distPlot",width = "1500px", height = "900px")
-                        )
-                      )
-             ),
              tabPanel("Team Stats",
                       sidebarLayout(
                         
@@ -458,18 +435,6 @@ server <- function(input, output, session) {
     
     p + theme_classic()
     
-  }, res = 90)
-  
-  output$distPlot <- renderPlot({
-    
-    df_temp <- Create_Player_Dist_Data(input$dPlayer, input$dBuckets)
-    
-    p <- ggplot(df_temp, aes(x = Bucket)) +
-      geom_histogram(fill = "steelblue", alpha=0.6, color = "grey", stat = "count") +
-      labs(x = "Bucket", y = "Count") +
-      ggtitle("Histogram of FPts")
-    
-    p + theme_classic()
   }, res = 90)
   
   output$teamTable = DT::renderDataTable({
