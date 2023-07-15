@@ -17,6 +17,11 @@ library(viridis)
 #
 #If there end up being 3 games in a gameweek then the code for fixing double gameweeks will need to change
 #
+#Maybe look into VaR Value at Risk
+#https://www.youtube.com/watch?v=wEz9Zfzx9Bs
+#
+#Maybe look into xg?
+#
 #----------------------- SETUP -----------------------#
 
 rm(list = ls())
@@ -293,6 +298,16 @@ Create_Team_Table <- function(vars){
   return(dfFinal)
 }
 
+Create_BoxPlot_Data <- function(startGW, endGW){
+  
+  df <- subset(gwdf, Gameweek >= startGW & Gameweek <= endGW)
+  df <- df[!grepl("^W \\(", df$Status), ]
+  df <- df[!grepl("FA", df$Status), ]
+  
+  
+  return(df)
+}
+
 #----------------------- CREATE FILTERS REFERENCES -----------------------#
 #create basic overall dataframe, so that you have min/max for sliders
 overall <- template
@@ -387,6 +402,22 @@ ui <- fluidPage(
                           DT::dataTableOutput("teamTable")
                         )
                       )
+             ),
+             tabPanel("Box Plots",
+                      sidebarLayout(
+                        
+                        sidebarPanel(
+                          
+                          width = "2",
+                          
+                          selectInput("bpMetric","Choose a Metric", choices = sort(numericColumns), selected = "FPts"),
+                          sliderInput("bpWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
+                        ),
+                        
+                        mainPanel(
+                          plotOutput(outputId = "boxPlot",width = "1500px", height = "900px")
+                        )
+                      )
              )
   )
 )
@@ -413,7 +444,7 @@ server <- function(input, output, session) {
   }, res = 90)
   
   output$table = DT::renderDataTable({
-    extraCols <- ("FPts.MeanMinusDD")
+    extraCols <- c("FPts.MeanMinusDD", "KP.90", "SOT.90")
     df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
                            input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2],
                            input$tWindow[1], input$tWindow[2])
@@ -442,6 +473,28 @@ server <- function(input, output, session) {
       options = list(paging = F)
     )
   })
+  
+  output$boxPlot <- renderPlot({
+    
+    df_temp <- Create_BoxPlot_Data(input$bpWindow[1], input$bpWindow[2])
+    
+    p <- ggplot(df_temp, aes(x = reorder(Status, get(input$bpMetric), FUN=mean), y = get(input$bpMetric), fill = Status)) +
+      geom_boxplot() +
+      stat_summary(
+        fun = mean,
+        geom = "point",
+        shape = 23,
+        size = 3,
+        fill = "white",
+        color = "black"
+      ) +
+      labs(title = "Team Distributions",
+           x = "Team",
+           y = input$bpMetric)
+    
+    p + theme_classic()
+    
+  }, res = 90)
   
   session$onSessionEnded(function() {
     stopApp()
