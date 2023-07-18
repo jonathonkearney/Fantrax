@@ -101,7 +101,7 @@ numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC
 #Variable and calculation combos
 varCombos <- numericColumns
 for(i in numericColumns){
-  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMinusDD", "LQ")){
+  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMnsDD", "LQ", "SubMeanMean")){
     varCombos <- c(varCombos, paste(i, j, sep = ".")) 
   }
 }
@@ -160,7 +160,7 @@ Add_Columns <- function(df, cols, startGW, endGW){
           df <- left_join(df,  summarise(group_by(gwWindow, Player), "{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
           df[, ncol(df)] <- as.vector(df[, ncol(df)])
         }
-        else if(calc == "MeanMinusDD"){
+        else if(calc == "MeanMnsDD"){
           removeMean <- FALSE
           removeDD <- FALSE
           if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
@@ -172,7 +172,7 @@ Add_Columns <- function(df, cols, startGW, endGW){
             df[, ncol(df)] <- as.vector(df[, ncol(df)])
             removeDD <- TRUE
           }
-          df <- mutate(df, !!paste0(var, ".MeanMinusDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
+          df <- mutate(df, !!paste0(var, ".MeanMnsDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
           if(removeMean == TRUE){
             df <- subset(df, select = -get(paste0(var, ".Mean")))
           }
@@ -199,14 +199,14 @@ Add_Columns <- function(df, cols, startGW, endGW){
             df <- subset(df, select = -Min)
           }
         }
+        else if(calc == "SubMeanMean"){
+          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.SubMeanMean" := round(mean(get(var)[get(var) < mean(get(var), na.rm = TRUE)], na.rm = TRUE), 2)), by = "Player")
+        }
       }
     }
   }
   return(df)
 }
-
-test <- template
-test <- Add_Columns(test, c("A.90", "SFTP"), 1, 38)
 
 Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, maxFPts.mean, minFPts.90, maxFPts.90, startGW, endGW) {
   
@@ -336,7 +336,7 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.MeanMinusDD"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.MeanMnsDD"),
                           selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "Min.Mean"),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pFPts.Mean", "FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = c(min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE))),
@@ -447,7 +447,7 @@ server <- function(input, output, session) {
   }, res = 90)
   
   output$table = DT::renderDataTable({
-    extraCols <- c("FPts.MeanMinusDD", "FPts.LQ")
+    extraCols <- c("FPts.MeanMnsDD", "FPts.LQ")
     df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
                            input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2],
                            input$tWindow[1], input$tWindow[2])
