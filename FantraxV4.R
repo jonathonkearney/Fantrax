@@ -101,7 +101,7 @@ numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC
 #Variable and calculation combos
 varCombos <- numericColumns
 for(i in numericColumns){
-  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMinusDD")){
+  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMinusDD", "LQ")){
     varCombos <- c(varCombos, paste(i, j, sep = ".")) 
   }
 }
@@ -149,6 +149,9 @@ Add_Columns <- function(df, cols, startGW, endGW){
         }
         else if(calc == "Med"){
           df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
+        }
+        else if(calc == "LQ"){
+          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.LQ" := quantile(get(var), na.rm = TRUE)[[2]]), by = "Player")
         }
         else if(calc == "MAD"){
           df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
@@ -444,7 +447,7 @@ server <- function(input, output, session) {
   }, res = 90)
   
   output$table = DT::renderDataTable({
-    extraCols <- c("FPts.MeanMinusDD", "KP.90", "SOT.90")
+    extraCols <- c("FPts.MeanMinusDD", "FPts.LQ")
     df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
                            input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2],
                            input$tWindow[1], input$tWindow[2])
