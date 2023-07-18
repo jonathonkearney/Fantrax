@@ -20,7 +20,8 @@ library(viridis)
 #Maybe look into VaR Value at Risk
 #https://www.youtube.com/watch?v=wEz9Zfzx9Bs
 #
-#Maybe look into xg?
+#New Functionality: When you click a player in the table tab, it adds them to a table below,
+#...so you can do comparisons between tables
 #
 #----------------------- SETUP -----------------------#
 
@@ -311,6 +312,13 @@ Create_BoxPlot_Data <- function(startGW, endGW){
   return(df)
 }
 
+Create_SelectTable<- function(selectedRows){
+  
+  
+  
+  return(df)
+}
+
 #----------------------- CREATE FILTERS REFERENCES -----------------------#
 #create basic overall dataframe, so that you have min/max for sliders
 overall <- template
@@ -368,7 +376,9 @@ ui <- fluidPage(
                         ),
                         
                         mainPanel(
-                          DT::dataTableOutput("table")
+                          DT::dataTableOutput("table"),
+                          actionButton("clear", "Clear Selected Players"),
+                          DT::dataTableOutput("selectTable")
                         )
                       )
              ),
@@ -425,7 +435,13 @@ ui <- fluidPage(
   )
 )
 
+#----------------------- Server -----------------------#
+
 server <- function(input, output, session) {
+  
+  #Selected rows for table under table. Needs to be here because it gets wiped every time the filters change
+  tableDF <- data.frame()
+  selectedPlayers <- c()
   
   output$plot <- renderPlot({
     df_temp <- Create_Data(input$pTeam, input$pStatus, input$pPosition, c(input$pXAxis, input$pYAxis), 
@@ -451,6 +467,24 @@ server <- function(input, output, session) {
     df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
                            input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2],
                            input$tWindow[1], input$tWindow[2])
+    
+    tableDF <<- df_temp
+  })
+  
+  output$selectTable = DT::renderDataTable({
+    
+    extraCols <- c("FPts.MeanMnsDD", "FPts.LQ")
+    df_temp <- Create_Data("All", "All", "All", c(extraCols, input$tPicker), 1,
+                           min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
+                           max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
+    
+    playerToAdd <- tableDF$Player[input$table_row_last_clicked]
+    selectedPlayers <<- c(selectedPlayers, playerToAdd)
+    
+    print(selectedPlayers)
+    
+    df_temp <- subset(df_temp, Player %in% selectedPlayers)
+    
   })
   
   output$playerPlot <- renderPlot({
