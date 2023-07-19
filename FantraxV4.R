@@ -377,7 +377,9 @@ ui <- fluidPage(
                         
                         mainPanel(
                           DT::dataTableOutput("table"),
+                          # div(style="margin-bottom:10px"),
                           actionButton("clear", "Clear Selected Players"),
+                          div(style="margin-bottom:10px"),
                           DT::dataTableOutput("selectTable")
                         )
                       )
@@ -439,9 +441,10 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  #Selected rows for table under table. Needs to be here because it gets wiped every time the filters change
   tableDF <- data.frame()
   selectedPlayers <- c()
+  playerToAdd <- "None"
+  playerAlreadyAdded <- FALSE
   
   output$plot <- renderPlot({
     df_temp <- Create_Data(input$pTeam, input$pStatus, input$pPosition, c(input$pXAxis, input$pYAxis), 
@@ -469,12 +472,25 @@ server <- function(input, output, session) {
                            input$tWindow[1], input$tWindow[2])
     
     tableDF <<- df_temp
+  }, options = list(pageLength = 8))
+  
+  observeEvent(input$table_row_last_clicked, {
+    playerAlreadyAdded <<- FALSE
   })
   
-  proxy = dataTableProxy('table')
   observeEvent(input$clear, {
+    proxy = dataTableProxy("table")
+    proxy2 = dataTableProxy("selectTable")
     selectedPlayers <<- c()
     selectRows(proxy, "none")
+    
+    extraCols <- c("FPts.MeanMnsDD", "FPts.LQ")
+    df_temp <- Create_Data("All", "All", "All", c(extraCols, input$tPicker), 1,
+                           min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
+                           max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
+    
+    df_temp <- subset(df_temp, FALSE)
+    replaceData(proxy2, df_temp, resetPaging = FALSE)
   })
   
   output$selectTable = DT::renderDataTable({
@@ -484,10 +500,16 @@ server <- function(input, output, session) {
                            min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
                            max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
     
-    playerToAdd <- tableDF$Player[input$table_row_last_clicked]
-    selectedPlayers <<- c(selectedPlayers, playerToAdd)
+    if(is.null(input$table_row_last_clicked) != TRUE){
+      playerToAdd <<- tableDF$Player[input$table_row_last_clicked]
+    }
     
-    print(selectedPlayers)
+    if (playerToAdd != "None" & playerAlreadyAdded == FALSE){
+      if(!(playerToAdd %in% selectedPlayers)){
+        selectedPlayers <<- c(selectedPlayers, playerToAdd)
+        playerAlreadyAdded <<- TRUE
+      }
+    }
     
     df_temp <- subset(df_temp, Player %in% selectedPlayers)
     
