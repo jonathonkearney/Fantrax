@@ -471,6 +471,12 @@ server <- function(input, output, session) {
     tableDF <<- df_temp
   })
   
+  proxy = dataTableProxy('table')
+  observeEvent(input$clear, {
+    selectedPlayers <<- c()
+    selectRows(proxy, "none")
+  })
+  
   output$selectTable = DT::renderDataTable({
     
     extraCols <- c("FPts.MeanMnsDD", "FPts.LQ")
