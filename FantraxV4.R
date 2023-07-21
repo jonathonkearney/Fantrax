@@ -17,11 +17,7 @@ library(viridis)
 #
 #If there end up being 3 games in a gameweek then the code for fixing double gameweeks will need to change
 #
-#Maybe look into VaR Value at Risk
-#https://www.youtube.com/watch?v=wEz9Zfzx9Bs
-#
-#New Functionality: When you click a player in the table tab, it adds them to a table below,
-#...so you can do comparisons between tables
+#SOME PLAYERS ON CERTAIN GAMEWEEKS GO HIGHER (OR LOWER?) THAN THE MAX FILTERS
 #
 #----------------------- SETUP -----------------------#
 
@@ -308,14 +304,6 @@ Create_BoxPlot_Data <- function(startGW, endGW){
   df <- df[!grepl("^W \\(", df$Status), ]
   df <- df[!grepl("FA", df$Status), ]
   
-  
-  return(df)
-}
-
-Create_SelectTable<- function(selectedRows){
-  
-  
-  
   return(df)
 }
 
@@ -347,7 +335,7 @@ ui <- fluidPage(
                           selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.MeanMnsDD"),
                           selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "Min.Mean"),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
-                          sliderInput("pFPts.Mean", "FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = c(min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE))),
+                          sliderInput("pFPts.Mean", "FPts.Mean", min = min(gwdf$FPts, na.rm = TRUE), max = max(gwdf$FPts, na.rm = TRUE), value = c(min(gwdf$FPts, na.rm = TRUE), max(gwdf$FPts, na.rm = TRUE))),
                           sliderInput("pFPts.90", "FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
                           sliderInput("pWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
                           
@@ -369,7 +357,7 @@ ui <- fluidPage(
                           selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All"),
                           selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           sliderInput("tMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
-                          sliderInput("tFPts.Mean", "FPts.Mean", min = min(overall$FPts.Mean, na.rm = TRUE), max = max(overall$FPts.Mean, na.rm = TRUE), value = c(min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE))),
+                          sliderInput("tFPts.Mean", "FPts.Mean", min = min(gwdf$FPts, na.rm = TRUE), max = max(gwdf$FPts, na.rm = TRUE), value = c(min(gwdf$FPts, na.rm = TRUE), max(gwdf$FPts, na.rm = TRUE))),
                           sliderInput("tFPts.90", "FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
                           pickerInput("tPicker", "Columns", choices = sort(varCombos), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
                           sliderInput("tWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
@@ -377,8 +365,6 @@ ui <- fluidPage(
                         
                         mainPanel(
                           DT::dataTableOutput("table"),
-                          # div(style="margin-bottom:10px"),
-                          actionButton("clear", "Clear Selected Players"),
                           div(style="margin-bottom:10px"),
                           DT::dataTableOutput("selectTable")
                         )
@@ -441,11 +427,6 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  tableDF <- data.frame()
-  selectedPlayers <- c()
-  playerToAdd <- "None"
-  playerAlreadyAdded <- FALSE
-  
   output$plot <- renderPlot({
     df_temp <- Create_Data(input$pTeam, input$pStatus, input$pPosition, c(input$pXAxis, input$pYAxis), 
                            input$pMinMins, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2],
@@ -464,57 +445,68 @@ server <- function(input, output, session) {
     p + theme_classic()
     
   }, res = 90)
+
+  tableDF <- data.frame()
+  selectTableDF <- data.frame()
+  baseTableDF <- data.frame()
+  selectedPlayers <- c()
   
   output$table = DT::renderDataTable({
-    extraCols <- c("FPts.MeanMnsDD", "FPts.LQ")
-    df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
+    df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c("FPts.MeanMnsDD", "FPts.LQ", input$tPicker), input$tMinMins,
                            input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2],
                            input$tWindow[1], input$tWindow[2])
-    
+
     tableDF <<- df_temp
   }, options = list(pageLength = 8))
   
-  observeEvent(input$table_row_last_clicked, {
-    playerAlreadyAdded <<- FALSE
-  })
-  
-  observeEvent(input$clear, {
-    proxy = dataTableProxy("table")
-    proxy2 = dataTableProxy("selectTable")
-    selectedPlayers <<- c()
-    selectRows(proxy, "none")
-    
-    extraCols <- c("FPts.MeanMnsDD", "FPts.LQ")
-    df_temp <- Create_Data("All", "All", "All", c(extraCols, input$tPicker), 1,
-                           min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
-                           max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
-    
-    df_temp <- subset(df_temp, FALSE)
-    replaceData(proxy2, df_temp, resetPaging = FALSE)
-  })
-  
   output$selectTable = DT::renderDataTable({
-    
-    extraCols <- c("FPts.MeanMnsDD", "FPts.LQ")
-    df_temp <- Create_Data("All", "All", "All", c(extraCols, input$tPicker), 1,
-                           min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
-                           max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
-    
-    if(is.null(input$table_row_last_clicked) != TRUE){
-      playerToAdd <<- tableDF$Player[input$table_row_last_clicked]
-    }
-    
-    if (playerToAdd != "None" & playerAlreadyAdded == FALSE){
-      if(!(playerToAdd %in% selectedPlayers)){
-        selectedPlayers <<- c(selectedPlayers, playerToAdd)
-        playerAlreadyAdded <<- TRUE
-      }
-    }
-    
+    df_temp <- Create_Data("All", "All", "All", c("FPts.MeanMnsDD", "FPts.LQ", input$tPicker), 1,
+                                  min(gwdf$FPts, na.rm = TRUE), max(gwdf$FPts, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
+                                  max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
+
     df_temp <- subset(df_temp, Player %in% selectedPlayers)
-    
+
+    selectTableDF <<- df_temp
   })
   
+  observeEvent(input$table_row_last_clicked, {
+    #add the player to the player list
+    playerToAdd <- tableDF$Player[input$table_row_last_clicked]
+    selectedPlayers <<- c(selectedPlayers, playerToAdd)
+    
+    #clear the table selection
+    selectRows(dataTableProxy("table"), "none")
+    
+    #replace the data on the select table
+    df_temp <- Create_Data("All", "All", "All", c("FPts.MeanMnsDD", "FPts.LQ", input$tPicker), 1,
+                           min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
+                           max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
+    df_temp <- subset(df_temp, Player %in% selectedPlayers)
+    replaceData(dataTableProxy("selectTable"), df_temp, resetPaging = FALSE)
+    
+    #update select table
+    selectTableDF <<- df_temp
+  })
+  
+  observeEvent(input$selectTable_row_last_clicked, {
+    #remove the player from the player list
+    playerToRemove <- selectTableDF$Player[input$selectTable_row_last_clicked]
+    selectedPlayers <<- selectedPlayers[!selectedPlayers == playerToRemove]
+    
+    #clear the select table selection
+    selectRows(dataTableProxy("selectTable"), "none")
+
+    #replace the data on the select table
+    df_temp <- Create_Data("All", "All", "All", c("FPts.MeanMnsDD", "FPts.LQ", input$tPicker), 1,
+                           min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
+                           max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
+    df_temp <- subset(df_temp, Player %in% selectedPlayers)
+    replaceData(dataTableProxy("selectTable"), df_temp, resetPaging = FALSE)
+    
+    #update select table
+    selectTableDF <<- df_temp
+  })
+
   output$playerPlot <- renderPlot({
     
     df_temp <- Create_Player_Data(input$plPlayer1, input$plPlayer2, input$plMetric, input$plWindow[1], input$plWindow[2])
