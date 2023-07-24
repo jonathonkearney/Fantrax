@@ -448,26 +448,26 @@ server <- function(input, output, session) {
 
   tableDF <- data.frame()
   selectTableDF <- data.frame()
-  baseTableDF <- data.frame()
   selectedPlayers <- c()
+  extraCols <- c("Min.Mean", "FPts.MeanMnsDD", "FPts.LQ")
   
   output$table = DT::renderDataTable({
-    df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c("FPts.MeanMnsDD", "FPts.LQ", input$tPicker), input$tMinMins,
+    df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
                            input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2],
                            input$tWindow[1], input$tWindow[2])
 
     tableDF <<- df_temp
-  }, options = list(pageLength = 8))
+  }, options = list(pageLength = 10))
   
   output$selectTable = DT::renderDataTable({
-    df_temp <- Create_Data("All", "All", "All", c("FPts.MeanMnsDD", "FPts.LQ", input$tPicker), 1,
+    df_temp <- Create_Data("All", "All", "All", c(extraCols, input$tPicker), 1,
                                   min(gwdf$FPts, na.rm = TRUE), max(gwdf$FPts, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
                                   max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
 
     df_temp <- subset(df_temp, Player %in% selectedPlayers)
 
     selectTableDF <<- df_temp
-  })
+  }, options = list(dom = 't'))
   
   observeEvent(input$table_row_last_clicked, {
     #add the player to the player list
@@ -478,7 +478,7 @@ server <- function(input, output, session) {
     selectRows(dataTableProxy("table"), "none")
     
     #replace the data on the select table
-    df_temp <- Create_Data("All", "All", "All", c("FPts.MeanMnsDD", "FPts.LQ", input$tPicker), 1,
+    df_temp <- Create_Data("All", "All", "All", c(extraCols, input$tPicker), 1,
                            min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
                            max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
     df_temp <- subset(df_temp, Player %in% selectedPlayers)
@@ -497,7 +497,7 @@ server <- function(input, output, session) {
     selectRows(dataTableProxy("selectTable"), "none")
 
     #replace the data on the select table
-    df_temp <- Create_Data("All", "All", "All", c("FPts.MeanMnsDD", "FPts.LQ", input$tPicker), 1,
+    df_temp <- Create_Data("All", "All", "All", c(extraCols, input$tPicker), 1,
                            min(overall$FPts.Mean, na.rm = TRUE), max(overall$FPts.Mean, na.rm = TRUE), min(overall$FPts.90, na.rm = TRUE),
                            max(overall$FPts.90, na.rm = TRUE), input$tWindow[1], input$tWindow[2])
     df_temp <- subset(df_temp, Player %in% selectedPlayers)
