@@ -28,6 +28,8 @@ setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxV4")
 
 #----------------------- LOADING DATA -----------------------#
 
+dataStatus <- "Incomplete"
+
 files <- list.files(path = "Gameweeks")
 FTList <- files[grep("^FT", files, ignore.case = TRUE)]
 FSList <- files[grep("^FS", files, ignore.case = TRUE)]
@@ -319,6 +321,14 @@ fantraxTeams <- sort(fantraxTeams[!grepl("^W \\(|^FA", fantraxTeams)])
 #----------------------- UI -----------------------#
 ui <- fluidPage(
   
+  tags$style(HTML("
+    .container-fluid > .nav > li > a[data-value='Incomplete'] {color:red}
+    .container-fluid > .nav > li > a[data-value='INCOMPLETE'] {color:red}
+    .container-fluid > .nav > li > a[data-value='Complete'] {color:green}
+    container-fluid > .nav > li > a[data-value='COMPLETE'] {color:green}
+  ")),
+  
+  
   theme = shinytheme("flatly"),
   
   navbarPage("Fantrax",
@@ -419,6 +429,8 @@ ui <- fluidPage(
                           plotOutput(outputId = "boxPlot",width = "1500px", height = "900px")
                         )
                       )
+             ),
+             tabPanel(dataStatus,
              )
   )
 )
