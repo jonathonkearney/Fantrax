@@ -386,8 +386,8 @@ ui <- fluidPage(
                           width = "2",
                           
                           selectInput("bpSelector","Choose a Team Type", choices = c("Status", "Team"), selected = "Status"),
-                          selectInput("bpMetric","Choose a Metric", choices = sort(varCombos), selected = "FPts"),
-                          sliderInput("bpWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
+                          selectInput("bpMetric","Choose a Metric", choices = sort(varCombos), selected = "FPts.Mean")
+                          # sliderInput("bpWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
                         ),
                         
                         mainPanel(
@@ -511,11 +511,18 @@ server <- function(input, output, session) {
   
   output$boxPlot <- renderPlot({
     
-    df_temp <- Add_Columns(gwdf, c(input$bpMetric), input$bpWindow[1], input$bpWindow[2])
+    df_temp <- template
     
-    #Get rid of the Waiver and FA Statuses
-    df_temp <- df_temp[!grepl("^W \\(", df_temp$Status), ]
-    df_temp <- df_temp[!grepl("FA", df_temp$Status), ]
+    df_temp <- Add_Columns(df_temp, c(input$bpMetric), 1, max(gwNumbers))
+    
+    #Some of the values in the new calculated column can be NA if they dont have enough data. So remvoe them
+    df_temp <- filter(df_temp, !(is.na(get(input$bpMetric))))
+    
+    #Get rid of the Waiver and FA Statuses if you are looking at status
+    if(input$bpSelector == "Status"){
+      df_temp <- df_temp[!grepl("^W \\(", df_temp$Status), ]
+      df_temp <- df_temp[!grepl("FA", df_temp$Status), ]
+    }
     
     p <- ggplot(df_temp, aes(x = reorder(get(input$bpSelector), get(input$bpMetric), FUN=mean), y = get(input$bpMetric), fill = get(input$bpSelector))) +
       geom_boxplot() +
