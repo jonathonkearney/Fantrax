@@ -5,7 +5,6 @@ library(DT)
 library(shinyWidgets)
 library(stats)
 library(PerformanceAnalytics)
-library(viridis)
 
 #----------------------- NOTES -----------------------#
 #
@@ -17,11 +16,7 @@ library(viridis)
 #
 #If there end up being 3 games in a gameweek then the code for fixing double gameweeks will need to change
 #
-#SOME PLAYERS ON CERTAIN GAMEWEEKS GO HIGHER (OR LOWER?) THAN THE MAX FILTERS
-#
-#Maybe make a tab that has scores for the each football teams F,M, and D. Maybe do it by summing up each of those positions
-#Although you will need to take account of the double position players. Maybe half their scores when they are counted
-#So that 50% goes to one position and 50% to another
+#Some players on certin gameweeks could potentially go higher or lower than the filters
 #
 #----------------------- SETUP -----------------------#
 
@@ -284,7 +279,7 @@ Create_Player_Data <- function(player1, player2, metric, startGW, endGW){
   return(df)
 }
 
-Create_BoxPlot_Data <- function(teamType, startGW, endGW){
+Create_BoxPlot_Data <- function(startGW, endGW){
   
   df <- subset(gwdf, Gameweek >= startGW & Gameweek <= endGW)
   df <- df[!grepl("^W \\(", df$Status), ]
@@ -391,7 +386,7 @@ ui <- fluidPage(
                           width = "2",
                           
                           selectInput("bpSelector","Choose a Team Type", choices = c("Status", "Team"), selected = "Status"),
-                          selectInput("bpMetric","Choose a Metric", choices = sort(numericColumns), selected = "FPts"),
+                          selectInput("bpMetric","Choose a Metric", choices = sort(varCombos), selected = "FPts"),
                           sliderInput("bpWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
                         ),
                         
@@ -516,16 +511,13 @@ server <- function(input, output, session) {
   
   output$boxPlot <- renderPlot({
     
-    df_temp <- Create_BoxPlot_Data(input$bpSelector, input$bpWindow[1], input$bpWindow[2])
+    df_temp <- Add_Columns(gwdf, c(input$bpMetric), input$bpWindow[1], input$bpWindow[2])
     
-    if(input$bpSelector == "Status"){
-      p <- ggplot(df_temp, aes(x = reorder(Status, get(input$bpMetric), FUN=mean), y = get(input$bpMetric), fill = Status))
-    }
-    else if(input$bpSelector == "Team"){
-      p <- ggplot(df_temp, aes(x = reorder(Team, get(input$bpMetric), FUN=mean), y = get(input$bpMetric), fill = Team)) 
-    }
+    #Get rid of the Waiver and FA Statuses
+    df_temp <- df_temp[!grepl("^W \\(", df_temp$Status), ]
+    df_temp <- df_temp[!grepl("FA", df_temp$Status), ]
     
-    p <- p +
+    p <- ggplot(df_temp, aes(x = reorder(get(input$bpSelector), get(input$bpMetric), FUN=mean), y = get(input$bpMetric), fill = get(input$bpSelector))) +
       geom_boxplot() +
       stat_summary(
         fun = mean,
