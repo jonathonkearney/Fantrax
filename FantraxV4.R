@@ -19,6 +19,10 @@ library(viridis)
 #
 #SOME PLAYERS ON CERTAIN GAMEWEEKS GO HIGHER (OR LOWER?) THAN THE MAX FILTERS
 #
+#Maybe make a tab that has scores for the each football teams F,M, and D. Maybe do it by summing up each of those positions
+#Although you will need to take account of the double position players. Maybe half their scores when they are counted
+#So that 50% goes to one position and 50% to another
+#
 #----------------------- SETUP -----------------------#
 
 rm(list = ls())
@@ -280,27 +284,7 @@ Create_Player_Data <- function(player1, player2, metric, startGW, endGW){
   return(df)
 }
 
-Create_Team_Table <- function(vars){
-  
-  df <- template
-  
-  df <- Add_Columns(df, vars, 1, length(gwNumbers))
-  
-  dfFinal <- as.data.frame(unique(df$Status))
-  colnames(dfFinal)[] <- "Status"
-  
-  for(i in vars){
-    if(!(i %in% colnames(dfFinal))){
-      temp <- df %>% group_by(Status) %>% summarise("{i}" := sum(get(i)))
-      dfFinal <- left_join(dfFinal, temp, by = "Status")
-    }
-  }
-  
-  dfFinal <- dfFinal[!grepl("^W \\(", dfFinal$Status), ]
-  return(dfFinal)
-}
-
-Create_BoxPlot_Data <- function(startGW, endGW){
+Create_BoxPlot_Data <- function(teamType, startGW, endGW){
   
   df <- subset(gwdf, Gameweek >= startGW & Gameweek <= endGW)
   df <- df[!grepl("^W \\(", df$Status), ]
@@ -399,28 +383,14 @@ ui <- fluidPage(
                         )
                       )
              ),
-             tabPanel("Team Stats",
+             tabPanel("Box Plot",
                       sidebarLayout(
                         
                         sidebarPanel(
                           
                           width = "2",
                           
-                          pickerInput("sPicker", "Columns", choices = sort(varCombos), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
-                        ),
-                        
-                        mainPanel(
-                          DT::dataTableOutput("teamTable")
-                        )
-                      )
-             ),
-             tabPanel("Box Plots",
-                      sidebarLayout(
-                        
-                        sidebarPanel(
-                          
-                          width = "2",
-                          
+                          selectInput("bpSelector","Choose a Team Type", choices = c("Status", "Team"), selected = "Status"),
                           selectInput("bpMetric","Choose a Metric", choices = sort(numericColumns), selected = "FPts"),
                           sliderInput("bpWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
                         ),
@@ -461,7 +431,7 @@ server <- function(input, output, session) {
   tableDF <- data.frame()
   selectTableDF <- data.frame()
   selectedPlayers <- c()
-  extraCols <- c("Min.Mean", "FPts.MeanMnsDD", "FPts.LQ")
+  extraCols <- c("Min.Mean", "FPts.MeanMnsDD", "SFTP.90", "Pts.90", "CS.90", "KP.90")
   
   output$table = DT::renderDataTable({
     df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
@@ -532,22 +502,30 @@ server <- function(input, output, session) {
     
   }, res = 90)
   
-  output$teamTable = DT::renderDataTable({
+  output$AMDPlot = renderPlot({
     
-    cols <- c("Min.Mean", "FPts.Mean", "G.Mean", "A.Mean", "KP.Mean",
-              "S.Mean", "SOT.Mean", "AP.Mean", "SFTP.Mean", input$sPicker)
+    p <- ggplot(AMDTable, aes(x = Team, y = get(input$amdMetric), fill = Team)) +
+      geom_boxplot() +
+      labs(title = "AMD Distributions",
+           x = "Football Team",
+           y = paste0(input$amdMetric, " (Past 10 games)"))
     
-    df_temp <- datatable(
-      Create_Team_Table(cols),
-      options = list(paging = F)
-    )
-  })
+    p + theme_classic()
+    
+  }, res = 90)
   
   output$boxPlot <- renderPlot({
     
-    df_temp <- Create_BoxPlot_Data(input$bpWindow[1], input$bpWindow[2])
+    df_temp <- Create_BoxPlot_Data(input$bpSelector, input$bpWindow[1], input$bpWindow[2])
     
-    p <- ggplot(df_temp, aes(x = reorder(Status, get(input$bpMetric), FUN=mean), y = get(input$bpMetric), fill = Status)) +
+    if(input$bpSelector == "Status"){
+      p <- ggplot(df_temp, aes(x = reorder(Status, get(input$bpMetric), FUN=mean), y = get(input$bpMetric), fill = Status))
+    }
+    else if(input$bpSelector == "Team"){
+      p <- ggplot(df_temp, aes(x = reorder(Team, get(input$bpMetric), FUN=mean), y = get(input$bpMetric), fill = Team)) 
+    }
+    
+    p <- p +
       geom_boxplot() +
       stat_summary(
         fun = mean,
@@ -557,8 +535,8 @@ server <- function(input, output, session) {
         fill = "white",
         color = "black"
       ) +
-      labs(title = "Team Distributions",
-           x = "Team",
+      labs(title = "Distributions",
+           x = input$bpSelector,
            y = input$bpMetric)
     
     p + theme_classic()
