@@ -100,7 +100,7 @@ numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC
 #Variable and calculation combos
 varCombos <- numericColumns
 for(i in numericColumns){
-  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMnsDD", "LQ", "SubMeanMean")){
+  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMnsDD", "LQ", "SubMeanMean", "90MnsMean")){
     varCombos <- c(varCombos, paste(i, j, sep = ".")) 
   }
 }
@@ -290,6 +290,27 @@ Add_SubMeanMean <- function(df, gwWindow, var){
   return(df)
 }
 
+Add_90MnsMean <- function(df, gwWindow, var){
+  removeMean <- FALSE
+  remove90 <- FALSE
+  if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
+    df <- Add_Mean(df, gwWindow, var)
+    removeMean <- TRUE
+  }
+  if (!(paste(var, "90", sep = ".") %in% colnames(df))) {
+    df <- Add_DownDev(df, gwWindow, var)
+    remove90 <- TRUE
+  }
+  df <- mutate(df, "{var}.90MnsMean" := round(get(paste0(var, ".90")) - get(paste0(var, ".Mean")), 2))
+  if(removeMean == TRUE){
+    df <- subset(df, select = -get(paste0(var, ".Mean")))
+  }
+  if(remove90 == TRUE){
+    df <- subset(df, select = -get(paste0(var, ".90")))
+  }
+  return(df)
+}
+
 #----------------------- CREATE FILTERS REFERENCES -----------------------#
 #create basic overall dataframe, so that you have min/max for sliders
 overall <- template
@@ -409,7 +430,7 @@ server <- function(input, output, session) {
   tableDF <- data.frame()
   selectTableDF <- data.frame()
   selectedPlayers <- c()
-  extraCols <- c("Min.Mean", "FPts.MeanMnsDD", "SFTP.90", "Pts.90", "CS.90", "KP.90", "GS.Mean")
+  extraCols <- c("Min.Mean", "FPts.MeanMnsDD", "FPts.90MnsMean", "SFTP.90", "KP.90", "Pts.90", "CS.90", "GS.Mean")
   
   output$table = DT::renderDataTable({
     df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
