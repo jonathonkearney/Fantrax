@@ -18,6 +18,7 @@ library(PerformanceAnalytics)
 #
 #Some players on certin gameweeks could potentially go higher or lower than the filters
 #
+#Add a FPts.90MnsMean
 #----------------------- SETUP -----------------------#
 
 rm(list = ls())
@@ -139,67 +140,7 @@ Add_Columns <- function(df, cols, startGW, endGW){
         var <- strsplit(i, ".", fixed = TRUE)[[1]][1]
         calc <- strsplit(i, ".", fixed = TRUE)[[1]][2]
         
-        if(calc == "SD"){
-          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.SD" := sd(get(var), na.rm = TRUE)), by = "Player")
-        }
-        else if(calc == "Mean"){
-          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
-        }
-        else if(calc == "Med"){
-          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
-        }
-        else if(calc == "LQ"){
-          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.LQ" := quantile(get(var), na.rm = TRUE)[[2]]), by = "Player")
-        }
-        else if(calc == "MAD"){
-          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
-        }
-        else if(calc == "DownDev"){
-          df <- left_join(df,  summarise(group_by(gwWindow, Player), "{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
-          df[, ncol(df)] <- as.vector(df[, ncol(df)])
-        }
-        else if(calc == "MeanMnsDD"){
-          removeMean <- FALSE
-          removeDD <- FALSE
-          if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
-            df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
-            removeMean <- TRUE
-          }
-          if (!(paste(var, "DownDev", sep = ".") %in% colnames(df))) {
-            df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
-            df[, ncol(df)] <- as.vector(df[, ncol(df)])
-            removeDD <- TRUE
-          }
-          df <- mutate(df, !!paste0(var, ".MeanMnsDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
-          if(removeMean == TRUE){
-            df <- subset(df, select = -get(paste0(var, ".Mean")))
-          }
-          if(removeDD == TRUE){
-            df <- subset(df, select = -get(paste0(var, ".DownDev")))
-          }
-        }
-        else if(calc == "90"){
-          removeVar = FALSE
-          removeMin = FALSE
-          if (!(var %in% colnames(df))) {
-            df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}" := sum(get(var))), by = "Player")
-            removeVar = TRUE
-          }
-          if (!("Min" %in% colnames(df))) {
-            df <- left_join(df, summarise(group_by(gwWindow, Player), Min := sum(Min)), by = "Player")
-            removeMin = TRUE
-          }
-          df <- mutate(df, "{var}.90" := round(((get(var) / Min)*90),2))
-          if(removeVar == TRUE){
-            df <- subset(df, select = -get(var))
-          }
-          if(removeMin == TRUE){
-            df <- subset(df, select = -Min)
-          }
-        }
-        else if(calc == "SubMeanMean"){
-          df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.SubMeanMean" := round(mean(get(var)[get(var) < mean(get(var), na.rm = TRUE)], na.rm = TRUE), 2)), by = "Player")
-        }
+        df <- do.call(paste0("Add_", calc), list(df, gwWindow, var))
       }
     }
   }
@@ -251,40 +192,101 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
   return(df)
 }
 
-Create_Player_Data <- function(player1, player2, metric, startGW, endGW){
+
+Create_BoxPlot_Data <- function(metric, selector){
   
-  df <- data.frame(Value = numeric(),
-                   Gameweek = numeric(),
-                   Player = character())
+  df <- template
+  df <- Add_Columns(df, c(metric), 1, max(gwNumbers))
   
-  gwWindow <- subset(gwdf, Gameweek >= startGW & Gameweek <= endGW)
+  #Some of the values in the new calculated column can be NA if they dont have enough data. So remove them
+  df <- filter(df, !(is.na(get(metric))))
   
-  players <- c(player1)
-  
-  if(player2 != "None"){
-    players <- c(players, player2)
+  #Get rid of the Waiver and FA Statuses if you are looking at status
+  if(selector == "Status"){
+    df <- df[!grepl("^W \\(", df$Status), ]
+    df <- df[!grepl("FA", df$Status), ]
   }
-  
-  for(i in players){
-    
-    values <- gwWindow[[metric]][gwWindow$Player == i]
-    values <- as.data.frame(values)
-    colnames(values)[1] <- "Value"
-    values <- values %>% mutate(Gameweek = row_number())
-    values <- values %>% mutate(Player = i)
-    
-    df <- rbind(df, values)
-  }
-  
+
   return(df)
 }
 
-Create_BoxPlot_Data <- function(startGW, endGW){
-  
-  df <- subset(gwdf, Gameweek >= startGW & Gameweek <= endGW)
-  df <- df[!grepl("^W \\(", df$Status), ]
-  df <- df[!grepl("FA", df$Status), ]
-  
+#----------------------- CALCULATION FUNCTIONS -----------------------#
+
+Add_SD <- function(df, gwWindow, var){
+  df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.SD" := round(sd(get(var), na.rm = TRUE),2)), by = "Player")
+  return(df)
+}
+
+Add_Mean <- function(df, gwWindow, var){
+  df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.Mean" := round(mean(get(var), na.rm = TRUE),2)), by = "Player")
+  return(df)
+}
+
+Add_Med <- function(df, gwWindow, var){
+  df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.Med" := median(get(var), na.rm = TRUE)), by = "Player")
+  return(df)
+}
+
+Add_LQ <- function(df, gwWindow, var){
+  df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.LQ" := quantile(get(var), na.rm = TRUE)[[2]]), by = "Player")
+  return(df)
+}
+
+Add_MAD <- function(df, gwWindow, var){
+  df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.MAD" := mad(get(var), constant = 1, na.rm = TRUE)), by = "Player")
+  return(df)
+}
+
+Add_DownDev <- function(df, gwWindow, var){
+  df <- left_join(df,  summarise(group_by(gwWindow, Player), "{var}.DownDev" := round(DownsideDeviation(get(var), MAR = mean(get(var)), na.rm = TRUE),2)), by = "Player")
+  df[, ncol(df)] <- as.vector(df[, ncol(df)])
+  return(df)
+}
+
+Add_MeanMnsDD <- function(df, gwWindow, var){
+  removeMean <- FALSE
+  removeDD <- FALSE
+  if (!(paste(var, "Mean", sep = ".") %in% colnames(df))) {
+    df <- Add_Mean(df, gwWindow, var)
+    removeMean <- TRUE
+  }
+  if (!(paste(var, "DownDev", sep = ".") %in% colnames(df))) {
+    df <- Add_DownDev(df, gwWindow, var)
+    removeDD <- TRUE
+  }
+  df <- mutate(df, !!paste0(var, ".MeanMnsDD") := round(get(paste0(var, ".Mean")) - get(paste0(var, ".DownDev")), 2))
+  if(removeMean == TRUE){
+    df <- subset(df, select = -get(paste0(var, ".Mean")))
+  }
+  if(removeDD == TRUE){
+    df <- subset(df, select = -get(paste0(var, ".DownDev")))
+  }
+  return(df)
+}
+
+Add_90 <- function(df, gwWindow, var){
+  removeVar = FALSE
+  removeMin = FALSE
+  if (!(var %in% colnames(df))) {
+    df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}" := sum(get(var))), by = "Player")
+    removeVar = TRUE
+  }
+  if (!("Min" %in% colnames(df))) {
+    df <- left_join(df, summarise(group_by(gwWindow, Player), Min := sum(Min)), by = "Player")
+    removeMin = TRUE
+  }
+  df <- mutate(df, "{var}.90" := round(((get(var) / Min)*90),2))
+  if(removeVar == TRUE){
+    df <- subset(df, select = -get(var))
+  }
+  if(removeMin == TRUE){
+    df <- subset(df, select = -Min)
+  }
+  return(df)
+}
+
+Add_SubMeanMean <- function(df, gwWindow, var){
+  df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.SubMeanMean" := round(mean(get(var)[get(var) < mean(get(var), na.rm = TRUE)], na.rm = TRUE), 2)), by = "Player")
   return(df)
 }
 
@@ -321,11 +323,11 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.MeanMnsDD"),
-                          selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "Min.Mean"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.90"),
+                          selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "FPts.Mean"),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pFPts.Mean", "FPts.Mean", min = min(gwdf$FPts, na.rm = TRUE), max = max(gwdf$FPts, na.rm = TRUE), value = c(min(gwdf$FPts, na.rm = TRUE), max(gwdf$FPts, na.rm = TRUE))),
-                          sliderInput("pFPts.90", "FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
+                          sliderInput("pFPts.90", "FPts per 90", min = 0, max = 100, value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
                           sliderInput("pWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
                           
                         ),
@@ -356,25 +358,6 @@ ui <- fluidPage(
                           DT::dataTableOutput("table"),
                           div(style="margin-bottom:10px"),
                           DT::dataTableOutput("selectTable")
-                        )
-                      )
-             ),
-             tabPanel("PlayerPlot",
-                      sidebarLayout(
-                        
-                        sidebarPanel(
-                          
-                          width = "2",
-                          
-                          selectInput("plPlayer1","Select a Player", choices = sort(template$Player), selected = 1),
-                          selectInput("plPlayer2","Select a 2nd Player", choices = c("None", sort(template$Player)), selected = "None"),
-                          selectInput("plMetric","Choose a Metric", choices = sort(numericColumns), selected = "FPts"),
-                          sliderInput("plWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
-                          
-                        ),
-                        
-                        mainPanel(
-                          plotOutput(outputId = "playerPlot",width = "1500px", height = "900px")
                         )
                       )
              ),
@@ -426,7 +409,7 @@ server <- function(input, output, session) {
   tableDF <- data.frame()
   selectTableDF <- data.frame()
   selectedPlayers <- c()
-  extraCols <- c("Min.Mean", "FPts.MeanMnsDD", "SFTP.90", "Pts.90", "CS.90", "KP.90")
+  extraCols <- c("Min.Mean", "FPts.MeanMnsDD", "SFTP.90", "Pts.90", "CS.90", "KP.90", "GS.Mean")
   
   output$table = DT::renderDataTable({
     df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
@@ -483,46 +466,10 @@ server <- function(input, output, session) {
     #update select table
     selectTableDF <<- df_temp
   })
-
-  output$playerPlot <- renderPlot({
-    
-    df_temp <- Create_Player_Data(input$plPlayer1, input$plPlayer2, input$plMetric, input$plWindow[1], input$plWindow[2])
-    
-    p <- ggplot(df_temp, aes(x=Gameweek, y=Value, fill=Player)) + 
-      geom_area(stat = "smooth", method = "loess", span = 1/5, alpha=0.5 , size=1, colour="white", position = "identity") + 
-      scale_fill_brewer(palette = "Set1") +
-      ggtitle("Values")
-    
-    p + theme_classic()
-    
-  }, res = 90)
-  
-  output$AMDPlot = renderPlot({
-    
-    p <- ggplot(AMDTable, aes(x = Team, y = get(input$amdMetric), fill = Team)) +
-      geom_boxplot() +
-      labs(title = "AMD Distributions",
-           x = "Football Team",
-           y = paste0(input$amdMetric, " (Past 10 games)"))
-    
-    p + theme_classic()
-    
-  }, res = 90)
   
   output$boxPlot <- renderPlot({
     
-    df_temp <- template
-    
-    df_temp <- Add_Columns(df_temp, c(input$bpMetric), 1, max(gwNumbers))
-    
-    #Some of the values in the new calculated column can be NA if they dont have enough data. So remvoe them
-    df_temp <- filter(df_temp, !(is.na(get(input$bpMetric))))
-    
-    #Get rid of the Waiver and FA Statuses if you are looking at status
-    if(input$bpSelector == "Status"){
-      df_temp <- df_temp[!grepl("^W \\(", df_temp$Status), ]
-      df_temp <- df_temp[!grepl("FA", df_temp$Status), ]
-    }
+    df_temp <- Create_BoxPlot_Data(input$bpMetric, input$bpSelector)
     
     p <- ggplot(df_temp, aes(x = reorder(get(input$bpSelector), get(input$bpMetric), FUN=mean), y = get(input$bpMetric), fill = get(input$bpSelector))) +
       geom_boxplot() +
