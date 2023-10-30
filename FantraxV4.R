@@ -17,8 +17,7 @@ library(PerformanceAnalytics)
 #If there end up being 3 games in a gameweek then the code for fixing double gameweeks will need to change
 #
 #Some players on certin gameweeks could potentially go higher or lower than the filters
-#
-#Add a FPts.90MnsMean
+
 #----------------------- SETUP -----------------------#
 
 rm(list = ls())
@@ -61,9 +60,11 @@ gwdf <- mutate(gwdf, AP = as.numeric(gsub("\\,", "", AP)))
 gwdf <- mutate(gwdf, AP = as.numeric(as.character(AP)))
 
 #Split out Opponent and HomeAway
-#NOTE - Opponent might not be correct for each game week. It depends when the data was extracted
 gwdf <- mutate(gwdf, HomeOrAway = ifelse(startsWith(gwdf$Opponent, "@"), "Away", "Home"))
-gwdf <- mutate(gwdf, Opponent = ifelse(startsWith(gwdf$Opponent, "@"), substring(gwdf$Opponent,2,4), substring(gwdf$Opponent,1,3)))
+
+#Clean up opponent column
+gwdf <- mutate(gwdf, Opponent = str_replace(Opponent, Team, ""))
+gwdf <- mutate(gwdf, Opponent = ifelse(startsWith(gwdf$Opponent, " "), substring(gwdf$Opponent,9,11), substring(gwdf$Opponent,1,3)))
 
 #Remove the row if they didnt play e.g. Min == 0
 gwdf <- subset(gwdf, Min != 0)
@@ -311,6 +312,15 @@ Add_90MnsMean <- function(df, gwWindow, var){
   return(df)
 }
 
+Create_Opposition_Data<- function(startGW, endGW){
+  
+  df <- subset(gwdf, Gameweek >= startGW & Gameweek <= endGW)
+  
+  df <- aggregate(FPts ~ Opponent + Position, df, sum)
+
+  return(df)
+}
+
 #----------------------- CREATE FILTERS REFERENCES -----------------------#
 #create basic overall dataframe, so that you have min/max for sliders
 overall <- template
@@ -396,6 +406,21 @@ ui <- fluidPage(
                         
                         mainPanel(
                           plotOutput(outputId = "boxPlot",width = "1500px", height = "900px")
+                        )
+                      )
+             ),
+             tabPanel("Opposition",
+                      sidebarLayout(
+                        
+                        sidebarPanel(
+                          
+                          width = "2",
+                          
+                          sliderInput("oWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
+                        ),
+                        
+                        mainPanel(
+                          DT::dataTableOutput("opposition"),
                         )
                       )
              ),
@@ -509,6 +534,11 @@ server <- function(input, output, session) {
     p + theme_classic()
     
   }, res = 90)
+  
+  output$opposition = DT::renderDataTable(
+    df_temp <- Create_Opposition_Data(input$oWindow[1], input$oWindow[2]),
+    options = list(pageLength = 15)
+  )
   
   session$onSessionEnded(function() {
     stopApp()
