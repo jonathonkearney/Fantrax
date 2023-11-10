@@ -194,10 +194,10 @@ Create_Data <- function(team, status, position, vars, minMins, minFPts.mean, max
 }
 
 
-Create_BoxPlot_Data <- function(metric, selector){
+Create_BoxPlot_Data <- function(metric, selector, startGW, endGW){
   
   df <- template
-  df <- Add_Columns(df, c(metric), 1, max(gwNumbers))
+  df <- Add_Columns(df, c(metric), startGW, endGW)
   
   #Some of the values in the new calculated column can be NA if they dont have enough data. So remove them
   df <- filter(df, !(is.na(get(metric))))
@@ -316,7 +316,7 @@ Create_Opposition_Data<- function(startGW, endGW){
   
   df <- subset(gwdf, Gameweek >= startGW & Gameweek <= endGW)
   
-  df <- aggregate(FPts ~ Opponent + Position, df, sum)
+  df <- aggregate(FPts ~ Opponent + Position, df, mean)
 
   return(df)
 }
@@ -354,8 +354,8 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All",unique(sort(overall$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.90"),
-                          selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "FPts.Mean"),
+                          selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.MeanMnsDD"),
+                          selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "Pts.90"),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pFPts.Mean", "FPts.Mean", min = min(gwdf$FPts, na.rm = TRUE), max = max(gwdf$FPts, na.rm = TRUE), value = c(min(gwdf$FPts, na.rm = TRUE), max(gwdf$FPts, na.rm = TRUE))),
                           sliderInput("pFPts.90", "FPts per 90", min = 0, max = 100, value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
@@ -400,8 +400,8 @@ ui <- fluidPage(
                           width = "2",
                           
                           selectInput("bpSelector","Choose a Team Type", choices = c("Status", "Team"), selected = "Status"),
-                          selectInput("bpMetric","Choose a Metric", choices = sort(varCombos), selected = "FPts.Mean")
-                          # sliderInput("bpWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
+                          selectInput("bpMetric","Choose a Metric", choices = sort(varCombos), selected = "FPts.Mean"),
+                          sliderInput("bpWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
                         ),
                         
                         mainPanel(
@@ -515,7 +515,7 @@ server <- function(input, output, session) {
   
   output$boxPlot <- renderPlot({
     
-    df_temp <- Create_BoxPlot_Data(input$bpMetric, input$bpSelector)
+    df_temp <- Create_BoxPlot_Data(input$bpMetric, input$bpSelector, input$bpWindow[1], input$bpWindow[2])
     
     p <- ggplot(df_temp, aes(x = reorder(get(input$bpSelector), get(input$bpMetric), FUN=mean), y = get(input$bpMetric), fill = get(input$bpSelector))) +
       geom_boxplot() +
