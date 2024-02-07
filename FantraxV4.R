@@ -17,6 +17,8 @@ library(PerformanceAnalytics)
 #If there end up being 3 games in a gameweek then the code for fixing double gameweeks will need to change
 #
 #Some players on certin gameweeks could potentially go higher or lower than the filters
+#
+#Add in a metric that is their highest score for a game where they got no goals, assists, or clean sheets
 
 #----------------------- SETUP -----------------------#
 
@@ -101,7 +103,7 @@ numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC
 #Variable and calculation combos
 varCombos <- numericColumns
 for(i in numericColumns){
-  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMnsDD", "LQ", "SubMeanMean", "90MnsMean")){
+  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMnsDD", "LQ", "SubMeanMean", "90MnsMean", "MaxGhost")){
     varCombos <- c(varCombos, paste(i, j, sep = ".")) 
   }
 }
@@ -244,6 +246,11 @@ Add_DownDev <- function(df, gwWindow, var){
   return(df)
 }
 
+Add_MaxGhost <- function(df, gwWindow, var){
+  df <- left_join(df, summarise(group_by(gwWindow, Player), "{var}.MaxGhost" := max(get(var)[CS == 0 & Pts == 0], na.rm = TRUE)), by = "Player")
+  return(df)
+}
+
 Add_MeanMnsDD <- function(df, gwWindow, var){
   removeMean <- FALSE
   removeDD <- FALSE
@@ -355,7 +362,7 @@ ui <- fluidPage(
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           selectInput("pXAxis","Choose the X Axis", choices = sort(varCombos), selected = "FPts.MeanMnsDD"),
-                          selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "Pts.90"),
+                          selectInput("pYAxis","Choose the Y Axis", choices = sort(varCombos), selected = "FPts.90"),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pFPts.Mean", "FPts.Mean", min = min(gwdf$FPts, na.rm = TRUE), max = max(gwdf$FPts, na.rm = TRUE), value = c(min(gwdf$FPts, na.rm = TRUE), max(gwdf$FPts, na.rm = TRUE))),
                           sliderInput("pFPts.90", "FPts per 90", min = 0, max = 100, value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
@@ -455,7 +462,7 @@ server <- function(input, output, session) {
   tableDF <- data.frame()
   selectTableDF <- data.frame()
   selectedPlayers <- c()
-  extraCols <- c("Min.Mean", "FPts.MeanMnsDD", "FPts.90MnsMean", "SFTP.90", "KP.90", "Pts.90", "CS.90", "GS.Mean")
+  extraCols <- c("Min.Mean", "FPts.MeanMnsDD", "FPts.90MnsMean", "FPts.MaxGhost", "SFTP.90", "KP.90", "Pts.90", "CS.90", "GS.Mean")
   
   output$table = DT::renderDataTable({
     df_temp <- Create_Data(input$tTeam, input$tStatus, input$tPosition, c(extraCols, input$tPicker), input$tMinMins,
@@ -463,7 +470,7 @@ server <- function(input, output, session) {
                            input$tWindow[1], input$tWindow[2])
 
     tableDF <<- df_temp
-  }, options = list(pageLength = 10))
+  }, options = list(pageLength = 10), rownames = FALSE)
   
   output$selectTable = DT::renderDataTable({
     df_temp <- Create_Data("All", "All", "All", c(extraCols, input$tPicker), 1,
@@ -473,7 +480,7 @@ server <- function(input, output, session) {
     df_temp <- subset(df_temp, Player %in% selectedPlayers)
 
     selectTableDF <<- df_temp
-  }, options = list(dom = 't'))
+  }, options = list(dom = 't'), rownames = FALSE)
   
   observeEvent(input$table_row_last_clicked, {
     #add the player to the player list
