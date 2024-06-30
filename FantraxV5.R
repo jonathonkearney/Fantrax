@@ -1,10 +1,11 @@
 library(tidyverse)
 library(httr)
 library(jsonlite) 
-library(worldfootballR)
 library(stringi)
 library(fuzzyjoin)
 library(rvest)
+library(shiny)
+library(shinythemes)
 library(janitor)
 
 
@@ -22,11 +23,15 @@ library(janitor)
 #Maybe make it so that I get a prompt in the console asking whether I want to reload the data or not. 
 
 ##############################  Misc ############################## 
-setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxAPI")
+setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxV5")
 
 rm(list = ls())
 
 year <- 2023
+
+##############################  User Input ############################## 
+
+get_new_stats <-  F
 
 ##############################  Get JSONS ############################## 
 json_players <- GET("https://www.fantrax.com/fxea/general/getPlayerIds?sport=EPL")
@@ -166,8 +171,8 @@ get_stats <- function(){
         head(-2)
       
       #Rename the columns to include their sub headers
-      colnames(tables[[j]]) <- paste0(colnames(tables[[j]]), " - ",  tables[[j]][1, ])
-      colnames(tables[[j]]) <- sub("^ - ", "", colnames(tables[[j]]))
+      colnames(tables[[j]]) <- paste0(colnames(tables[[j]]), "_", tables[[j]][1, ])
+      colnames(tables[[j]]) <- sub("^_", "", colnames(tables[[j]]))
       tables[[j]] <- tables[[j]][-1, ]
       
       #remove the Matches column
@@ -196,12 +201,12 @@ get_stats <- function(){
   return(stats)
 }
 
-# Ask whether the user wants to fetch new stats data or load old stats data
-if (tolower(readline(prompt="Do you want to fetch new stats data (y/n)? ")) == "y") {
-  # Load stats.csv into a dataframe
+if (get_new_stats == F) {
+  
   stats <- read.csv("stats.csv")
-} else {
-  # Call get_stats() function to get statistics
+  stats <- clean_names(stats)
+} else if (get_new_stats == T) {
+  
   stats <- get_stats()
 }
 
@@ -209,13 +214,52 @@ if (tolower(readline(prompt="Do you want to fetch new stats data (y/n)? ")) == "
 
 df <- rosters %>% 
   select(name, teamName) %>% 
-  `colnames<-`(c("Player", "teamName")) %>% 
-  full_join(stats, by = join_by(Player))
+  `colnames<-`(c("player", "teamName")) %>% 
+  full_join(stats, by = join_by(player))
 
 unjoined <- df %>% 
   filter(is.na(Nation))
 
+#---------------------------------------------- UI ----------------------------------------------#
 
+ui <- fluidPage(
+  
+  theme = shinytheme("flatly"),
+  navbarPage("Fantrax",
+             tabPanel("Plot",
+                      sidebarLayout(
+                        sidebarPanel(
+                          width = "2",
+                          selectInput("xvar", "Select X-axis variable:", 
+                                      choices = names(df), selected = "performance_gls"),
+                          selectInput("yvar", "Select Y-axis variable:", 
+                                      choices = names(df), selected = "performance_ast"),
+                        ),
+                        
+                        mainPanel(
+                          plotOutput(outputId = "plot",width = "1500px", height = "900px")
+                        )
+                        )
+             )
+  )
+)
 
+# Define server logic
+server <- function(input, output) {
+  output$plot <- renderPlot({
+    ggplot(df, aes(colour = pos)) + aes_string(x = input$xvar, y = input$yvar) +
+      geom_point() + 
+      geom_text(
+        aes(label = player), 
+        check_overlap = F,
+        adj = -0.1,
+        vjust="inward"
+      ) + coord_flip(clip = "off") +
+      geom_abline(intercept = c(0), slope = 1, color = c("black"), alpha=0.4) + 
+      theme_classic()
+    
+  }, res = 90)
+}
 
-
+# Run the app
+shinyApp(ui = ui, server = server)
