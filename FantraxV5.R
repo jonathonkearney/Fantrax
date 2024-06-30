@@ -227,23 +227,61 @@ get_stats <- function(){
 }
 
 if (get_new_stats == F) {
-  
   stats <- read.csv("stats.csv")
   stats <- clean_names(stats)
 } else if (get_new_stats == T) {
-  
   stats <- get_stats()
 }
 
 ############################## create main df ############################## 
 
-df <- rosters %>% 
-  select(name, teamName) %>% 
-  `colnames<-`(c("player", "teamName")) %>% 
+df <- rosters %>%
+  left_join(eligibility, by = join_by(ID)) %>% 
+  select(name, teamName, eligiblePos, status.y) %>% 
+  `colnames<-`(c("player", "teamName", "eligiblePos", "status")) %>% 
   full_join(stats, by = join_by(player))
 
 unjoined <- df %>% 
   filter(is.na(Nation))
+
+############################## Filter data ############################## 
+
+filter_data <- function(Team, Status, Position){
+  
+  plotData <- df
+  
+  #Football team
+  if(Team != "All"){
+    plotData <- filter(plotData, team == Team)
+  }
+  
+  #Status
+  if (Status == "All Available") {
+    plotData <- filter(plotData, is.na(status))
+  }
+  else if (Status == "All Taken") {
+    plotData <- filter(plotData, status == "T")
+  }
+  
+  #Position
+  if (Position != "All") {
+    plotData <- filter(plotData, grepl(Position, pos))
+    
+    
+    # if(Position == "D"){
+    #   plotData <- filter(plotData, grepl("D", pos))
+    # }
+    # else if(Position == "M"){
+    #   plotData <- filter(plotData, grepl("M", pos))
+    # }
+    # else if(Position == "F"){
+    #   plotData <- filter(plotData, grepl("F", pos))
+    # }
+  } 
+  
+  
+  return(plotData)
+}
 
 #---------------------------------------------- UI ----------------------------------------------#
 
@@ -255,10 +293,11 @@ ui <- fluidPage(
                       sidebarLayout(
                         sidebarPanel(
                           width = "2",
-                          selectInput("pxvar", "Select X-axis variable:", 
-                                      choices = names(df), selected = "playing_time_mn_mp"),
-                          selectInput("pyvar", "Select Y-axis variable:", 
-                                      choices = names(df), selected = "performance_ast"),
+                          selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(df$team))), selected = "All"),
+                          selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(na.omit(df$teamName))), selected = "All Available"),
+                          selectInput("pPosition","Choose a Position", choices = c("All", unique(na.omit(df$pos))), selected = "All"),
+                          selectInput("pXVar", "Select X-axis:", choices = names(df), selected = "touches_att_3rd"),
+                          selectInput("pYVar", "Select Y-axis:", choices = names(df), selected = "kp"),
                         ),
                         
                         mainPanel(
@@ -294,8 +333,12 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output) {
+  
   output$plot <- renderPlot({
-    ggplot(df, aes(colour = pos)) + aes_string(x = input$pxvar, y = input$pyvar) +
+    
+    plotData <- filter_data(input$pTeam, input$pStatus, input$pPosition)
+    
+    ggplot(plotData, aes(colour = pos)) + aes_string(x = input$pXVar, y = input$pYVar) +
       geom_point() + 
       geom_text(
         aes(label = player), 
