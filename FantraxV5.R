@@ -140,6 +140,28 @@ get_stats <- function(){
             "https://fbref.com/en/squads/8cec06e1/Wolverhampton-Wanderers-Stats"
             )
   
+  team_names <- c("Arsenal",
+                  "Aston Villa",
+                  "Bournemouth",
+                  "Brentford",
+                  "Brighton",
+                  "Burnley",
+                  "Chelsea",
+                  "Crystal Palace",
+                  "Everton",
+                  "Fulham",
+                  "Liverpool",
+                  "Luton Town",
+                  "Manchester City",
+                  "Manchester United",
+                  "Newcastle United",
+                  "Nottingham Forest",
+                  "Sheffield United",
+                  "Tottenham",
+                  "West Ham United",
+                  "Wolverhampton"
+  )
+  
   #Download the team HTML pages and store them in a list
   team_html_list <- list()
   for (i in seq_along(URLs)) {
@@ -183,6 +205,9 @@ get_stats <- function(){
     
     # Combine data frames into a single team dataframe
     team_df <- reduce(tables, combine_ind_team_tables)
+    
+    #add a team column so we know which team each player plays for
+    team_df$team <- team_names[i]
     
     #add the dataframe to the list
     team_df_list[[i]] <- team_df
@@ -230,16 +255,39 @@ ui <- fluidPage(
                       sidebarLayout(
                         sidebarPanel(
                           width = "2",
-                          selectInput("xvar", "Select X-axis variable:", 
-                                      choices = names(df), selected = "performance_gls"),
-                          selectInput("yvar", "Select Y-axis variable:", 
+                          selectInput("pxvar", "Select X-axis variable:", 
+                                      choices = names(df), selected = "playing_time_mn_mp"),
+                          selectInput("pyvar", "Select Y-axis variable:", 
                                       choices = names(df), selected = "performance_ast"),
                         ),
                         
                         mainPanel(
                           plotOutput(outputId = "plot",width = "1500px", height = "900px")
                         )
+                      )
+             ),
+             tabPanel("Table",
+                      sidebarLayout(
+                        
+                        sidebarPanel(
+                          
+                          width = "2",
+                          
+                          # selectInput("tTeam","Choose a team", choices = c("All",unique(sort(df$team))), selected = "All"),
+                          # selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All"),
+                          # selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
+                          # sliderInput("tMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
+                          # sliderInput("tFPts.Mean", "FPts.Mean", min = min(gwdf$FPts, na.rm = TRUE), max = max(gwdf$FPts, na.rm = TRUE), value = c(min(gwdf$FPts, na.rm = TRUE), max(gwdf$FPts, na.rm = TRUE))),
+                          # sliderInput("tFPts.90", "FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
+                          # pickerInput("tPicker", "Columns", choices = sort(varCombos), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
+                          # sliderInput("tWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
+                        ),
+                        
+                        mainPanel(
+                          # DT::dataTableOutput("table"),
+                          # div(style="margin-bottom:10px")
                         )
+                      )
              )
   )
 )
@@ -247,7 +295,7 @@ ui <- fluidPage(
 # Define server logic
 server <- function(input, output) {
   output$plot <- renderPlot({
-    ggplot(df, aes(colour = pos)) + aes_string(x = input$xvar, y = input$yvar) +
+    ggplot(df, aes(colour = pos)) + aes_string(x = input$pxvar, y = input$pyvar) +
       geom_point() + 
       geom_text(
         aes(label = player), 
@@ -263,3 +311,5 @@ server <- function(input, output) {
 
 # Run the app
 shinyApp(ui = ui, server = server)
+
+
