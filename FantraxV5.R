@@ -193,8 +193,8 @@ get_stats <- function(){
         head(-2)
       
       #Rename the columns to include their sub headers
-      colnames(tables[[j]]) <- paste0(colnames(tables[[j]]), "_", tables[[j]][1, ])
-      colnames(tables[[j]]) <- sub("^_", "", colnames(tables[[j]]))
+      colnames(tables[[j]]) <- paste0(colnames(tables[[j]]), " - ", tables[[j]][1, ])
+      colnames(tables[[j]]) <- sub("^ - ", "", colnames(tables[[j]]))
       tables[[j]] <- tables[[j]][-1, ]
       
       #remove the Matches column
@@ -207,7 +207,7 @@ get_stats <- function(){
     team_df <- reduce(tables, combine_ind_team_tables)
     
     #add a team column so we know which team each player plays for
-    team_df$team <- team_names[i]
+    team_df$Team <- team_names[i]
     
     #add the dataframe to the list
     team_df_list[[i]] <- team_df
@@ -220,6 +220,9 @@ get_stats <- function(){
   #remove accents from names so it joins better
   stats$Player <- stri_trans_general(stats$Player, "Latin-ASCII")
   
+  #convert total playing time to numeric and remove commas
+  stats$`Playing Time - Min` <- as.numeric(gsub(",", "", stats$`Playing Time - Min`))
+  
   #Overwrite stats file
   write.csv(stats, file = "stats.csv", row.names = FALSE)
   
@@ -227,8 +230,7 @@ get_stats <- function(){
 }
 
 if (get_new_stats == F) {
-  stats <- read.csv("stats.csv")
-  stats <- clean_names(stats)
+  stats <- read.csv("stats.csv", check.names = FALSE)
 } else if (get_new_stats == T) {
   stats <- get_stats()
 }
@@ -237,48 +239,48 @@ if (get_new_stats == F) {
 
 df <- rosters %>%
   left_join(eligibility, by = join_by(ID)) %>% 
-  select(name, teamName, eligiblePos, status.y) %>% 
-  `colnames<-`(c("player", "teamName", "eligiblePos", "status")) %>% 
-  full_join(stats, by = join_by(player))
+  select(name, teamName) %>% 
+  `colnames<-`(c("Player", "Team Name")) %>% 
+  full_join(stats, by = join_by(Player))
 
 unjoined <- df %>% 
   filter(is.na(Nation))
 
 ############################## Filter data ############################## 
 
-filter_data <- function(Team, Status, Position){
+Filter_Plot_Data <- function(team, status, position, xVar, yVar, xMin, xMax, yMin, yMax){
   
   plotData <- df
   
   #Football team
-  if(Team != "All"){
-    plotData <- filter(plotData, team == Team)
+  if(team != "All"){
+    plotData <- plotData %>% filter(Team == team)
   }
   
   #Status
-  if (Status == "All Available") {
-    plotData <- filter(plotData, is.na(status))
+  if (status == "All") {
+    plotData <- plotData
   }
-  else if (Status == "All Taken") {
-    plotData <- filter(plotData, status == "T")
+  else if (status == "All Available") {
+    plotData <- plotData %>% filter(is.na(`Team Name`))
+  }
+  else if (status == "All Taken") {
+    plotData <- plotData %>% filter(!is.na(`Team Name`))
+  }
+  else{
+    plotData <- plotData %>% filter(grepl(status, `Team Name`))
   }
   
   #Position
-  if (Position != "All") {
-    plotData <- filter(plotData, grepl(Position, pos))
-    
-    
-    # if(Position == "D"){
-    #   plotData <- filter(plotData, grepl("D", pos))
-    # }
-    # else if(Position == "M"){
-    #   plotData <- filter(plotData, grepl("M", pos))
-    # }
-    # else if(Position == "F"){
-    #   plotData <- filter(plotData, grepl("F", pos))
-    # }
-  } 
+  if (position != "All") {
+    plotData <- plotData %>% filter(grepl(position, Pos))
+  }
   
+  print(paste(xVar, yVar, xMin, xMax, yMin, yMax))
+  
+  #Sliders
+  plotData <- plotData %>% filter(get(xVar) >= xMin & get(xVar) <= xMax)
+  plotData <- plotData %>% filter(get(yVar) >= yMin & get(yVar) <= yMax)
   
   return(plotData)
 }
@@ -293,11 +295,13 @@ ui <- fluidPage(
                       sidebarLayout(
                         sidebarPanel(
                           width = "2",
-                          selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(df$team))), selected = "All"),
-                          selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(na.omit(df$teamName))), selected = "All Available"),
-                          selectInput("pPosition","Choose a Position", choices = c("All", unique(na.omit(df$pos))), selected = "All"),
-                          selectInput("pXVar", "Select X-axis:", choices = names(df), selected = "touches_att_3rd"),
-                          selectInput("pYVar", "Select Y-axis:", choices = names(df), selected = "kp"),
+                          selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(df$Team))), selected = "All"),
+                          selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(na.omit(df$`Team Name`))), selected = "All Available"),
+                          selectInput("pPosition","Choose a Position", choices = c("All", unique(na.omit(df$Pos))), selected = "All"),
+                          selectInput("pXVar", "Select X-axis:", choices = sort(names(df)), selected = "Touches - Att 3rd"),
+                          selectInput("pYVar", "Select Y-axis:", choices = sort(names(df)), selected = "KP"),
+                          sliderInput("pXSlider", "Select X range:", min = 0, max = 100, value = c(0, 100)),
+                          sliderInput("pYSlider", "Select Y range:", min = 0, max = 100, value = c(0, 100))
                         ),
                         
                         mainPanel(
@@ -332,16 +336,31 @@ ui <- fluidPage(
 )
 
 # Define server logic
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  observeEvent(input$pXVar, {
+    xVar <- input$pXVar
+    xMinVal <- min(df[[xVar]], na.rm = TRUE)
+    xMaxVal <- max(df[[xVar]], na.rm = TRUE)
+    updateSliderInput(session, "pXSlider", min = xMinVal, max = xMaxVal, value = c(xMinVal, xMaxVal))
+  })
+  
+  observeEvent(input$pYVar, {
+    yVar <- input$pYVar
+    yMinVal <- min(df[[yVar]], na.rm = TRUE)
+    yMaxVal <- max(df[[yVar]], na.rm = TRUE)
+    updateSliderInput(session, "pYSlider", min = yMinVal, max = yMaxVal, value = c(yMinVal, yMaxVal))
+  })
   
   output$plot <- renderPlot({
     
-    plotData <- filter_data(input$pTeam, input$pStatus, input$pPosition)
+    plotData <- Filter_Plot_Data(input$pTeam, input$pStatus, input$pPosition, input$pXVar, input$pYVar, input$pXSlider[1], input$pXSlider[2],
+                            input$pYSlider[1], input$pYSlider[2])
     
-    ggplot(plotData, aes(colour = pos)) + aes_string(x = input$pXVar, y = input$pYVar) +
+    ggplot(plotData, aes(colour = Pos)) + aes_string(x = as.name(input$pXVar), y = as.name(input$pYVar)) +
       geom_point() + 
       geom_text(
-        aes(label = player), 
+        aes(label = Player), 
         check_overlap = F,
         adj = -0.1,
         vjust="inward"
