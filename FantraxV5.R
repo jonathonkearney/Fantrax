@@ -5,6 +5,7 @@ library(stringi)
 library(fuzzyjoin)
 library(rvest)
 library(shiny)
+library(shinyWidgets)
 library(shinythemes)
 library(janitor)
 
@@ -169,7 +170,7 @@ get_stats <- function(){
     team_html_list[[i]] <- read_html(URLs[i])
     cat("Read", URLs[i], "\n")
     # Introduce a delay of 3 seconds
-    Sys.sleep(3)
+    Sys.sleep(runif(1, min = 3, max = 5))
   }
   
   #Create a list of dataframes with one combined dataframe for each team
@@ -246,9 +247,47 @@ df <- rosters %>%
 unjoined <- df %>% 
   filter(is.na(Nation))
 
+############################## clean up main df ############################## 
+
+colnames(df) <- colnames(df) %>%
+  str_replace("^Expected", "Exp") %>% 
+  str_replace("^Performance", "Perf") %>%
+  str_replace("^Per 90 Minutes", "P90")%>%
+  str_replace("^Standard", "Std") %>%
+  str_replace("^Total", "Tot") %>%
+  str_replace("^Short", "Sht") %>%
+  str_replace("^Medium", "Med") %>%
+  str_replace("^Long", "Lon") %>%
+  str_replace("^Pass Types", "Pass") %>%
+  str_replace("^Corner Kicks", "Cnr") %>%
+  str_replace("^Outcomes", "Out") %>%
+  str_replace("^SCA Types", "SCA") %>% 
+  str_replace("^GCA Types", "GCA") %>%
+  str_replace("^Tackles", "Tac") %>%
+  str_replace("^Challenges", "Chal") %>%
+  str_replace("^Blocks", "Blo") %>%
+  str_replace("^Touches", "Tou") %>% 
+  str_replace("^Take-Ons", "TkOn") %>% 
+  str_replace("^Carries", "Car") %>% 
+  str_replace("^Receiving", "Rec") %>% 
+  str_replace("^Playing Time", "Play") %>% 
+  str_replace("^Starts", "Star") %>% 
+  str_replace("^Team Success", "Team") %>% 
+  str_replace("^Aerial Duels", "Aer")
+
+#Remove players who haven't played many minutes so it doesnt screw up the sliders
+df <- df %>% 
+  filter(df$`Play - Min` >= 20)
+
+############################## Make new variables ############################## 
+
+df <- df %>% mutate(`P90 - KP` = round( ((df$KP / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - Tou - Att 3rd` = round( ((df$`Tou - Att 3rd` / df$`Play - Min`)*90),2))
+
+
 ############################## Filter data ############################## 
 
-Filter_Plot_Data <- function(team, status, position, xVar, yVar, xMin, xMax, yMin, yMax){
+Filter_Plot_Data <- function(team, status, position, xVar, yVar, xMin, xMax, yMin, yMax, minMins, maxMins){
   
   plotData <- df
   
@@ -276,20 +315,53 @@ Filter_Plot_Data <- function(team, status, position, xVar, yVar, xMin, xMax, yMi
     plotData <- plotData %>% filter(grepl(position, Pos))
   }
   
-  print(paste(xVar, yVar, xMin, xMax, yMin, yMax))
-  
   #Sliders
   plotData <- plotData %>% filter(get(xVar) >= xMin & get(xVar) <= xMax)
   plotData <- plotData %>% filter(get(yVar) >= yMin & get(yVar) <= yMax)
+  plotData <- plotData %>% filter(plotData$`Play - Min` >= minMins & plotData$`Play - Min` <= maxMins)
   
   return(plotData)
+}
+
+Filter_Table_Data <- function(team, status, position, minMins, maxMins){
+  
+  tableData <- df
+  
+  #Football team
+  if(team != "All"){
+    tableData <- tableData %>% filter(Team == team)
+  }
+  
+  #Status
+  if (status == "All") {
+    tableData <- tableData
+  }
+  else if (status == "All Available") {
+    tableData <- tableData %>% filter(is.na(`Team Name`))
+  }
+  else if (status == "All Taken") {
+    tableData<- tableData %>% filter(!is.na(`Team Name`))
+  }
+  else{
+    tableData <- tableData %>% filter(grepl(status, `Team Name`))
+  }
+  
+  #Position
+  if (position != "All") {
+    tableData <- tableData %>% filter(grepl(position, Pos))
+  }
+  
+  #Sliders
+  tableData <- tableData %>% filter(tableData$`Play - Min` >= minMins & tableData$`Play - Min` <= maxMins)
+  
+  return(tableData)
 }
 
 #---------------------------------------------- UI ----------------------------------------------#
 
 ui <- fluidPage(
   
-  theme = shinytheme("flatly"),
+  theme = shinytheme("flatly"), 
   navbarPage("Fantrax",
              tabPanel("Plot",
                       sidebarLayout(
@@ -298,10 +370,12 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(df$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(na.omit(df$`Team Name`))), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", unique(na.omit(df$Pos))), selected = "All"),
-                          selectInput("pXVar", "Select X-axis:", choices = sort(names(df)), selected = "Touches - Att 3rd"),
-                          selectInput("pYVar", "Select Y-axis:", choices = sort(names(df)), selected = "KP"),
+                          selectInput("pXVar", "Select X-axis:", choices = sort(names(df)), selected = "Tou - Att 3rd"),
+                          selectInput("pYVar", "Select Y-axis:", choices = sort(names(df)), selected = "P90 - KP"),
                           sliderInput("pXSlider", "Select X range:", min = 0, max = 100, value = c(0, 100)),
-                          sliderInput("pYSlider", "Select Y range:", min = 0, max = 100, value = c(0, 100))
+                          sliderInput("pYSlider", "Select Y range:", min = 0, max = 100, value = c(0, 100)),
+                          sliderInput("pMinSlider", "Select Minutes range:", min = min(df$`Play - Min`, na.rm = TRUE), max = max(df$`Play - Min`, na.rm = TRUE),
+                                      value = c(0, max(df$`Play - Min`, na.rm = TRUE)))
                         ),
                         
                         mainPanel(
@@ -311,24 +385,20 @@ ui <- fluidPage(
              ),
              tabPanel("Table",
                       sidebarLayout(
-                        
                         sidebarPanel(
-                          
                           width = "2",
-                          
-                          # selectInput("tTeam","Choose a team", choices = c("All",unique(sort(df$team))), selected = "All"),
-                          # selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All"),
-                          # selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          # sliderInput("tMinMins", "Minimum Total Minutes", min = min(overall$Min, na.rm = TRUE), max = max(overall$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
-                          # sliderInput("tFPts.Mean", "FPts.Mean", min = min(gwdf$FPts, na.rm = TRUE), max = max(gwdf$FPts, na.rm = TRUE), value = c(min(gwdf$FPts, na.rm = TRUE), max(gwdf$FPts, na.rm = TRUE))),
-                          # sliderInput("tFPts.90", "FPts per 90", min = min(overall$FPts.90, na.rm = TRUE), max = max(overall$FPts.90, na.rm = TRUE), value = c(min(overall$FPts.90, na.rm = TRUE), max(overall$FPts.90, na.rm = TRUE))),
-                          # pickerInput("tPicker", "Columns", choices = sort(varCombos), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
-                          # sliderInput("tWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers)))
+                          selectInput("tTeam","Choose a Team", choices = c("All", unique(sort(df$Team))), selected = "All"),
+                          selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(na.omit(df$`Team Name`))), selected = "All Available"),
+                          selectInput("tPosition","Choose a Position", choices = c("All", unique(na.omit(df$Pos))), selected = "All"),
+                          sliderInput("tMinSlider", "Select Minutes range:", min = min(df$`Play - Min`, na.rm = TRUE), max = max(df$`Play - Min`, na.rm = TRUE),
+                                      value = c(0, max(df$`Play - Min`, na.rm = TRUE))),
+                          pickerInput("tVars", "Select Columns", choices = sort(names(df)), options = list(`actions-box` = TRUE), multiple=TRUE,
+                                             selected = c("Player", "Team", "Team Name", "Play - Min", "Pos", "P90 - Gls", "P90 - xG", "P90 - Ast", "P90 - xAG",
+                                                          "P90 - KP", "Tou - Att 3rd"))
                         ),
                         
                         mainPanel(
-                          # DT::dataTableOutput("table"),
-                          # div(style="margin-bottom:10px")
+                          DT::dataTableOutput("table"),
                         )
                       )
              )
@@ -342,20 +412,20 @@ server <- function(input, output, session) {
     xVar <- input$pXVar
     xMinVal <- min(df[[xVar]], na.rm = TRUE)
     xMaxVal <- max(df[[xVar]], na.rm = TRUE)
-    updateSliderInput(session, "pXSlider", min = xMinVal, max = xMaxVal, value = c(xMinVal, xMaxVal))
+    updateSliderInput(session, "pXSlider", min = xMinVal, max = xMaxVal, value = c(xMinVal, xMaxVal), step = xMaxVal/20)
   })
   
   observeEvent(input$pYVar, {
     yVar <- input$pYVar
     yMinVal <- min(df[[yVar]], na.rm = TRUE)
     yMaxVal <- max(df[[yVar]], na.rm = TRUE)
-    updateSliderInput(session, "pYSlider", min = yMinVal, max = yMaxVal, value = c(yMinVal, yMaxVal))
+    updateSliderInput(session, "pYSlider", min = yMinVal, max = yMaxVal, value = c(yMinVal, yMaxVal), step = yMaxVal/20)
   })
   
   output$plot <- renderPlot({
     
     plotData <- Filter_Plot_Data(input$pTeam, input$pStatus, input$pPosition, input$pXVar, input$pYVar, input$pXSlider[1], input$pXSlider[2],
-                            input$pYSlider[1], input$pYSlider[2])
+                            input$pYSlider[1], input$pYSlider[2], input$pMinSlider[1], input$pMinSlider[2])
     
     ggplot(plotData, aes(colour = Pos)) + aes_string(x = as.name(input$pXVar), y = as.name(input$pYVar)) +
       geom_point() + 
@@ -369,6 +439,14 @@ server <- function(input, output, session) {
       theme_classic()
     
   }, res = 90)
+  
+  output$table = DT::renderDataTable({
+    tableData <- Filter_Table_Data(input$tTeam, input$tStatus, input$tPosition, input$tMinSlider[1], input$tMinSlider[2]) %>% 
+      select(input$tVars)
+      
+    
+    tableDF <<- tableData
+  }, options = list(pageLength = 10), rownames = FALSE)
 }
 
 # Run the app
