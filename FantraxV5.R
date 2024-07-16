@@ -414,6 +414,17 @@ ui <- fluidPage(
                           plotOutput(outputId = "boxPlot",width = "1500px", height = "900px")
                         )
                       )
+             ),
+             tabPanel("Unjoined",
+                      sidebarLayout(
+                        sidebarPanel(
+                          width = "2",
+                        ),
+                        
+                        mainPanel(
+                          DT::dataTableOutput("unjoinedTable"),
+                        )
+                      )
              )
   )
 )
@@ -488,6 +499,14 @@ server <- function(input, output, session) {
     p + theme_classic()
     
   }, res = 90)
+  
+  output$unjoinedTable = DT::renderDataTable({
+    
+    unjoinedTableData <- unjoined %>% 
+      select(Player)
+    
+    tableDF <<- unjoinedTableData
+  }, options = list(pageLength = 10), rownames = FALSE)
 }
 
 # Run the app
