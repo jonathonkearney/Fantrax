@@ -393,12 +393,25 @@ ui <- fluidPage(
                           sliderInput("tMinSlider", "Select Minutes range:", min = min(df$`Play - Min`, na.rm = TRUE), max = max(df$`Play - Min`, na.rm = TRUE),
                                       value = c(0, max(df$`Play - Min`, na.rm = TRUE))),
                           pickerInput("tVars", "Select Columns", choices = sort(names(df)), options = list(`actions-box` = TRUE), multiple=TRUE,
-                                             selected = c("Player", "Team", "Team Name", "Play - Min", "Pos", "P90 - Gls", "P90 - xG", "P90 - Ast", "P90 - xAG",
-                                                          "P90 - KP", "Tou - Att 3rd"))
+                                             selected = c("Player", "Team", "Team Name", "Play - Min", "Pos", "Star - Mn/Start", "P90 - Gls", "P90 - xG", "P90 - Ast",
+                                                          "P90 - xAG", "P90 - KP", "P90 - Tou - Att 3rd", "Play - Min%"))
                         ),
                         
                         mainPanel(
                           DT::dataTableOutput("table"),
+                        )
+                      )
+             ),
+             tabPanel("Box Plot",
+                      sidebarLayout(
+                        sidebarPanel(
+                          width = "2",
+                          selectInput("bpTeamType", "Choose a Team Type", choices = c("Team", "Team Name"), selected = "Team Name"),
+                          selectInput("bpVar", "Choose a Variable", choices = sort(names(df)), selected = "Tou - Att 3rd")
+                        ),
+                        
+                        mainPanel(
+                          plotOutput(outputId = "boxPlot",width = "1500px", height = "900px")
                         )
                       )
              )
@@ -441,12 +454,40 @@ server <- function(input, output, session) {
   }, res = 90)
   
   output$table = DT::renderDataTable({
+    
+    first_cols <- c("Player", "Team", "Team Name", "Play - Min", "Pos", "Star - Mn/Start", "Play - Min%", "P90 - Tou - Att 3rd")
+    selected_cols <- c(input$tVars)
+    
     tableData <- Filter_Table_Data(input$tTeam, input$tStatus, input$tPosition, input$tMinSlider[1], input$tMinSlider[2]) %>% 
-      select(input$tVars)
+      select(first_cols, setdiff(selected_cols, first_cols) )
       
     
     tableDF <<- tableData
   }, options = list(pageLength = 10), rownames = FALSE)
+  
+  output$boxPlot <- renderPlot({
+    
+    boxPlotData <- df
+    
+    boxPlotData <- na.omit(boxPlotData[, c(input$bpTeamType, input$bpVar)])
+    
+    p <- ggplot(boxPlotData, aes(x = reorder(get(input$bpTeamType), get(input$bpVar), FUN=mean), y = get(input$bpVar), fill = get(input$bpTeamType))) +
+      geom_boxplot() +
+      stat_summary(
+        fun = mean,
+        geom = "point",
+        shape = 23,
+        size = 3,
+        fill = "white",
+        color = "black"
+      ) +
+      labs(title = "Distributions",
+           x = input$bpTeamType,
+           y = input$bpVar)
+    
+    p + theme_classic()
+    
+  }, res = 90)
 }
 
 # Run the app
