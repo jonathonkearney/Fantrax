@@ -281,9 +281,17 @@ df <- df %>%
 
 ############################## Make new variables ############################## 
 
-df <- df %>% mutate(`P90 - KP` = round( ((df$KP / df$`Play - Min`)*90),2))
-df <- df %>% mutate(`P90 - Tou - Att 3rd` = round( ((df$`Tou - Att 3rd` / df$`Play - Min`)*90),2))
-
+df <- df %>% mutate(`P90 - KP` = round(((df$KP / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - Tou - Att 3rd` = round(((df$`Tou - Att 3rd` / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - TklW` = round(((df$`Chal - TklW` / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - PassDist` = round(((df$`Tot - TotDist` / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - CarDist` = round(((df$`Car - TotDist` / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - AerWon` = round(((df$`Aer - Won` / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - PassRec` = round(((df$`Rec - Rec` / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - Int` = round(((df$`Perf - Int` / df$`Play - Min`)*90),2))
+df <- df %>% rename(`P90 - Sh` = `Std - Sh/90`)
+df <- df %>% rename(`P90 - SoT` = `Std - SoT/90`)
+df <- df %>% rename(`Std - AvgShotDist` = `Std - Dist`)
 
 ############################## Filter data ############################## 
 
