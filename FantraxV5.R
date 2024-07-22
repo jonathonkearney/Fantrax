@@ -289,6 +289,8 @@ df <- df %>% mutate(`P90 - CarDist` = round(((df$`Car - TotDist` / df$`Play - Mi
 df <- df %>% mutate(`P90 - AerWon` = round(((df$`Aer - Won` / df$`Play - Min`)*90),2))
 df <- df %>% mutate(`P90 - PassRec` = round(((df$`Rec - Rec` / df$`Play - Min`)*90),2))
 df <- df %>% mutate(`P90 - Int` = round(((df$`Perf - Int` / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - PrgPassRec` = round(((df$`Rec - PrgR` / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - PassCmp` = round(((df$`Out - Cmp` / df$`Play - Min`)*90),2))
 df <- df %>% rename(`P90 - Sh` = `Std - Sh/90`)
 df <- df %>% rename(`P90 - SoT` = `Std - SoT/90`)
 df <- df %>% rename(`Std - AvgShotDist` = `Std - Dist`)
@@ -403,7 +405,8 @@ ui <- fluidPage(
                                       value = c(0, max(df$`Play - Min`, na.rm = TRUE))),
                           pickerInput("tVars", "Select Columns", choices = sort(names(df)), options = list(`actions-box` = TRUE), multiple=TRUE,
                                              selected = c("Player", "Team", "Team Name", "Play - Min", "Pos", "P90 - Gls", "P90 - xG", "P90 - Ast",
-                                                          "P90 - xAG", "P90 - KP", "P90 - Tou - Att 3rd"))
+                                                          "P90 - xAG", "P90 - KP", "P90 - Tou - Att 3rd", "P90 - xG+xAG", "P90 - PrgPassRec",
+                                                          "P90 - PassCmp"))
                         ),
                         
                         mainPanel(
