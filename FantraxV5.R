@@ -291,6 +291,7 @@ df <- df %>% mutate(`P90 - PassRec` = round(((df$`Rec - Rec` / df$`Play - Min`)*
 df <- df %>% mutate(`P90 - Int` = round(((df$`Perf - Int` / df$`Play - Min`)*90),2))
 df <- df %>% mutate(`P90 - PrgPassRec` = round(((df$`Rec - PrgR` / df$`Play - Min`)*90),2))
 df <- df %>% mutate(`P90 - PassCmp` = round(((df$`Out - Cmp` / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - Clr` = round(((df$Clr / df$`Play - Min`)*90),2))
 df <- df %>% rename(`P90 - Sh` = `Std - Sh/90`)
 df <- df %>% rename(`P90 - SoT` = `Std - SoT/90`)
 df <- df %>% rename(`Std - AvgShotDist` = `Std - Dist`)
