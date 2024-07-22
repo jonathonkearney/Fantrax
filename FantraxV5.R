@@ -283,7 +283,7 @@ df <- df %>%
 
 df <- df %>% mutate(`P90 - KP` = round(((df$KP / df$`Play - Min`)*90),2))
 df <- df %>% mutate(`P90 - Tou - Att 3rd` = round(((df$`Tou - Att 3rd` / df$`Play - Min`)*90),2))
-df <- df %>% mutate(`P90 - TklW` = round(((df$`Chal - TklW` / df$`Play - Min`)*90),2))
+df <- df %>% mutate(`P90 - TklW` = round(((df$`Tac - TklW` / df$`Play - Min`)*90),2))
 df <- df %>% mutate(`P90 - PassDist` = round(((df$`Tot - TotDist` / df$`Play - Min`)*90),2))
 df <- df %>% mutate(`P90 - CarDist` = round(((df$`Car - TotDist` / df$`Play - Min`)*90),2))
 df <- df %>% mutate(`P90 - AerWon` = round(((df$`Aer - Won` / df$`Play - Min`)*90),2))
@@ -292,6 +292,7 @@ df <- df %>% mutate(`P90 - Int` = round(((df$`Perf - Int` / df$`Play - Min`)*90)
 df <- df %>% rename(`P90 - Sh` = `Std - Sh/90`)
 df <- df %>% rename(`P90 - SoT` = `Std - SoT/90`)
 df <- df %>% rename(`Std - AvgShotDist` = `Std - Dist`)
+df <- df %>% rename(`Play - Min/MP` = `Play - Mn/MP`)
 
 ############################## Filter data ############################## 
 
@@ -377,9 +378,9 @@ ui <- fluidPage(
                           width = "2",
                           selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(df$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(na.omit(df$`Team Name`))), selected = "All Available"),
-                          selectInput("pPosition","Choose a Position", choices = c("All", unique(na.omit(df$Pos))), selected = "All"),
-                          selectInput("pXVar", "Select X-axis:", choices = sort(names(df)), selected = "Tou - Att 3rd"),
-                          selectInput("pYVar", "Select Y-axis:", choices = sort(names(df)), selected = "P90 - KP"),
+                          selectInput("pPosition","Choose a Position", choices = c("All", "DF", "MF", "FW" ), selected = "All"),
+                          selectInput("pXVar", "Select X-axis:", choices = sort(names(df)), selected = "P90 - Tou - Att 3rd"),
+                          selectInput("pYVar", "Select Y-axis:", choices = sort(names(df)), selected = "P90 - CarDist"),
                           sliderInput("pXSlider", "Select X range:", min = 0, max = 100, value = c(0, 100)),
                           sliderInput("pYSlider", "Select Y range:", min = 0, max = 100, value = c(0, 100)),
                           sliderInput("pMinSlider", "Select Minutes range:", min = min(df$`Play - Min`, na.rm = TRUE), max = max(df$`Play - Min`, na.rm = TRUE),
@@ -397,12 +398,12 @@ ui <- fluidPage(
                           width = "2",
                           selectInput("tTeam","Choose a Team", choices = c("All", unique(sort(df$Team))), selected = "All"),
                           selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(na.omit(df$`Team Name`))), selected = "All Available"),
-                          selectInput("tPosition","Choose a Position", choices = c("All", unique(na.omit(df$Pos))), selected = "All"),
+                          selectInput("tPosition","Choose a Position", choices = c("All", "DF", "MF", "FW" ), selected = "All"),
                           sliderInput("tMinSlider", "Select Minutes range:", min = min(df$`Play - Min`, na.rm = TRUE), max = max(df$`Play - Min`, na.rm = TRUE),
                                       value = c(0, max(df$`Play - Min`, na.rm = TRUE))),
                           pickerInput("tVars", "Select Columns", choices = sort(names(df)), options = list(`actions-box` = TRUE), multiple=TRUE,
-                                             selected = c("Player", "Team", "Team Name", "Play - Min", "Pos", "Star - Mn/Start", "P90 - Gls", "P90 - xG", "P90 - Ast",
-                                                          "P90 - xAG", "P90 - KP", "P90 - Tou - Att 3rd", "Play - Min%"))
+                                             selected = c("Player", "Team", "Team Name", "Play - Min", "Pos", "P90 - Gls", "P90 - xG", "P90 - Ast",
+                                                          "P90 - xAG", "P90 - KP", "P90 - Tou - Att 3rd"))
                         ),
                         
                         mainPanel(
@@ -415,7 +416,7 @@ ui <- fluidPage(
                         sidebarPanel(
                           width = "2",
                           selectInput("bpTeamType", "Choose a Team Type", choices = c("Team", "Team Name"), selected = "Team Name"),
-                          selectInput("bpVar", "Choose a Variable", choices = sort(names(df)), selected = "Tou - Att 3rd")
+                          selectInput("bpVar", "Choose a Variable", choices = sort(names(df)), selected = "P90 - Tou - Att 3rd")
                         ),
                         
                         mainPanel(
@@ -474,7 +475,7 @@ server <- function(input, output, session) {
   
   output$table = DT::renderDataTable({
     
-    first_cols <- c("Player", "Team", "Team Name", "Play - Min", "Pos", "Star - Mn/Start", "Play - Min%", "P90 - Tou - Att 3rd")
+    first_cols <- c("Player", "Team", "Team Name", "Pos", "Play - Min", "Play - Min/MP", "P90 - Tou - Att 3rd")
     selected_cols <- c(input$tVars)
     
     tableData <- Filter_Table_Data(input$tTeam, input$tStatus, input$tPosition, input$tMinSlider[1], input$tMinSlider[2]) %>% 
@@ -519,5 +520,3 @@ server <- function(input, output, session) {
 
 # Run the app
 shinyApp(ui = ui, server = server)
-
-
