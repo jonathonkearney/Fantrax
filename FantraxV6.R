@@ -109,6 +109,12 @@ latestStatuses <- eligibility %>%
   mutate(Status = ifelse(is.na(Status), Status.old, Status)) %>%
   select(-Status.old)
 
+#----------------------- TEMPLATE -----------------------#
+
+#Template needs to be made first before you remove rows with 0 mins
+template <- subset(gwdf, Gameweek == max(gwdf$Gameweek))
+template <- select(template, c(Player, Team, Position, Status))
+
 #----------------------- DATA CLEANING -----------------------#
 
 #remove comma from data$Min and AP and convert to numeric 
@@ -123,7 +129,9 @@ gwdf <- gwdf %>%
   mutate(Opponent = str_replace(Opponent, Team, "")) %>% 
   mutate(Opponent = ifelse(startsWith(gwdf$Opponent, " "), substring(gwdf$Opponent,9,11), substring(gwdf$Opponent,1,3))) %>%
   #remove quotes from ID column
-  mutate(ID = gsub("^\\*|\\*$", "", ID)) %>% 
+  mutate(ID = gsub("^\\*|\\*$", "", ID)) %>%
+  #remove the extra team name for the players who have moved teams
+  mutate(Team = sub(".*/", "", Team)) %>% 
   #Remove the row if they didnt play e.g. Min == 0
   filter(Min != 0)
 
@@ -141,11 +149,6 @@ gwdf <- gwdf %>%
 
 #Statuses
 statuses <- c("W (Mon)", "W (Tue)", "W (Wed)", "W (Thu)", "W (Fri)", "W (Sat)", "W (Sun)", "FA")
-
-#Gameweek numbers
-gwNumbers <- list.files(path = "Gameweeks", pattern = "^FS.*", full.names = FALSE)
-gwNumbers <- lapply(gwNumbers, function(s) substr(s, 6, nchar(s) - 4))
-gwNumbers <- sort(as.numeric(gwNumbers))
 
 characterColumns <- c("Gameweek", "ID", "Player", "Team", "Position", "RkOv",
                       "Status", "Opponent", "Ros..", "X...", "PC.", "HomeOrAway")
@@ -231,7 +234,11 @@ Pre_Filter <- function(df, team, status, position, startGW, endGW){
 
 Create_Data <- function(filtered_gwdf, cols){
   
-  df <- baseDF
+  #create base summary df to add cols to
+  df <- template
+  
+  #add in base cols
+  cols <- c("Min", "FPts.Mean", "FPts.90", cols)
   
   for(i in cols){
     if(!(i %in% colnames(df))){
@@ -245,7 +252,9 @@ Create_Data <- function(filtered_gwdf, cols){
         var <- strsplit(i, ".", fixed = TRUE)[[1]][1]
         stat <- strsplit(i, ".", fixed = TRUE)[[1]][2]
       }
+      
       df <- Add_Statistic(df, filtered_gwdf, var, stat)
+      
     }
   }
   return(df)
@@ -296,14 +305,10 @@ Post_Filter <- function(df, minMins, minFPts.mean, maxFPts.mean, minFPts.90, max
   return(df)
 }
 
-#----------------------- CREATE BASE SUMMARY DF -----------------------#
+#----------------------- CREATE SLIDERS DF -----------------------#
 
-#Both as a template to add columns to, and for the sliders
-baseDF <- gwdf %>%
-  #get the data from the latest gameweek and select only certain columns
-  filter(Gameweek == max(gwdf$Gameweek)) %>% 
-  select(c(Player, Team, Position, Status)) %>%
-  #Add the specific statistic columns
+#for the sliders
+sliderDF <- template %>% 
   Add_Statistic(gwdf, "Min", "Sum") %>%
   Add_Statistic(gwdf, "FPts", "Mean") %>%
   Add_Statistic(gwdf, "FPts", "90")
@@ -323,10 +328,10 @@ ui <- fluidPage(
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "G.Mean"),
                           selectInput("pYVar", "Select Y-axis:", choices = sort(varCombos), selected = "AT.Mean"),
-                          sliderInput("pWindow", "Gameweek Window", min = min(gwNumbers), max = max(gwNumbers), value = c(min(gwNumbers), max(gwNumbers))),
-                          sliderInput("pMinMins", "Minimum Total Minutes", min = 0, max = max(baseDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
-                          sliderInput("pFPts.Mean", "FPts.Mean", min = min(baseDF$FPts.Mean, na.rm = TRUE), max = max(baseDF$FPts.Mean, na.rm = TRUE), value = c(0, max(baseDF$FPts.Mean, na.rm = TRUE))),
-                          sliderInput("pFPts.90", "FPts per 90", min = min(baseDF$FPts.90, na.rm = TRUE), max = max(baseDF$FPts.90, na.rm = TRUE), value = c(0, max(baseDF$FPts.90, na.rm = TRUE))),
+                          sliderInput("pWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
+                          sliderInput("pMinMins", "Minimum Total Minutes", min = 0, max = max(sliderDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
+                          sliderInput("pFPts.Mean", "FPts.Mean", min = min(sliderDF$FPts.Mean, na.rm = TRUE), max = max(sliderDF$FPts.Mean, na.rm = TRUE), value = c(0, max(sliderDF$FPts.Mean, na.rm = TRUE))),
+                          sliderInput("pFPts.90", "FPts per 90", min = min(sliderDF$FPts.90, na.rm = TRUE), max = max(sliderDF$FPts.90, na.rm = TRUE), value = c(0, max(sliderDF$FPts.90, na.rm = TRUE))),
                           
                          
                           
@@ -341,15 +346,15 @@ ui <- fluidPage(
                       sidebarLayout(
                         sidebarPanel(
                           width = "2",
-                          # selectInput("tTeam","Choose a Team", choices = c("All", unique(sort(df$Team))), selected = "All"),
-                          # selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", unique(na.omit(df$`Team Name`))), selected = "All Available"),
-                          # selectInput("tPosition","Choose a Position", choices = c("All", "DF", "MF", "FW" ), selected = "All"),
-                          # sliderInput("tMinSlider", "Select Minutes range:", min = min(df$`Play - Min`, na.rm = TRUE), max = max(df$`Play - Min`, na.rm = TRUE),
-                          #             value = c(0, max(df$`Play - Min`, na.rm = TRUE))),
-                          # pickerInput("tVars", "Select Columns", choices = sort(names(df)), options = list(`actions-box` = TRUE), multiple=TRUE,
-                          #             selected = c("Player", "Team", "Team Name", "Play - Min", "Pos", "P90 - Gls", "P90 - xG", "P90 - Ast",
-                          #                          "P90 - xAG", "P90 - KP", "P90 - Tou - Att 3rd", "P90 - xG+xAG", "P90 - PrgPassRec",
-                          #                          "P90 - PassCmp"))
+                          selectInput("tTeam","Choose a Team", choices = c("All", unique(sort(gwdf$Team))), selected = "All"),
+                          selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
+                          selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
+                          pickerInput("tPicker", "Columns", choices = sort(varCombos), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
+                          sliderInput("tWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
+                          sliderInput("tMinMins", "Minimum Total Minutes", min = 0, max = max(sliderDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
+                          sliderInput("tFPts.Mean", "FPts.Mean", min = min(sliderDF$FPts.Mean, na.rm = TRUE), max = max(sliderDF$FPts.Mean, na.rm = TRUE), value = c(0, max(sliderDF$FPts.Mean, na.rm = TRUE))),
+                          sliderInput("tFPts.90", "FPts per 90", min = min(sliderDF$FPts.90, na.rm = TRUE), max = max(sliderDF$FPts.90, na.rm = TRUE), value = c(0, max(sliderDF$FPts.90, na.rm = TRUE)))
+                          
                         ),
                         
                         mainPanel(
@@ -402,17 +407,17 @@ server <- function(input, output, session) {
     
   }, res = 90)
   
-  # output$table = DT::renderDataTable({
-  #   
-  #   first_cols <- c("Player", "Team", "Team Name", "Pos", "Play - Min", "Play - Min/MP", "P90 - Tou - Att 3rd")
-  #   selected_cols <- c(input$tVars)
-  #   
-  #   tableData <- Filter_Table_Data(input$tTeam, input$tStatus, input$tPosition, input$tMinSlider[1], input$tMinSlider[2]) %>% 
-  #     select(first_cols, setdiff(selected_cols, first_cols) )
-  #   
-  #   
-  #   tableDF <<- tableData
-  # }, options = list(pageLength = 10), rownames = FALSE)
+  output$table = DT::renderDataTable({
+  
+    extra_cols <- c("Min.Mean", "FPts.MeanMnsDD", "SFTP.90", "KP.90",
+                    "Pts.90", "CS.90", "GS.Mean")
+    
+    tableData <- gwdf %>% 
+      Pre_Filter(input$tTeam, input$tStatus, input$tPosition, input$tWindow[1], input$tWindow[2]) %>% 
+      Create_Data(c(extra_cols, input$tPicker)) %>% 
+      Post_Filter(input$tMinMins, input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2])
+
+  }, options = list(pageLength = 10), rownames = FALSE)
   
   # output$boxPlot <- renderPlot({
   #   
