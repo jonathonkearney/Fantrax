@@ -112,8 +112,10 @@ latestStatuses <- eligibility %>%
 #----------------------- TEMPLATE -----------------------#
 
 #Template needs to be made first before you remove rows with 0 mins
-template <- subset(gwdf, Gameweek == max(gwdf$Gameweek))
-template <- select(template, c(Player, Team, Position, Status))
+template <- subset(gwdf, Gameweek == max(gwdf$Gameweek)) %>% 
+  select(c(Player, Team, Position, Status)) %>% 
+  #remove the extra team name for the players who have moved teams
+  mutate(Team = sub(".*/", "", Team)) 
 
 #----------------------- DATA CLEANING -----------------------#
 
@@ -366,8 +368,9 @@ ui <- fluidPage(
                       sidebarLayout(
                         sidebarPanel(
                           width = "2",
-                          # selectInput("bpTeamType", "Choose a Team Type", choices = c("Team", "Team Name"), selected = "Team Name"),
-                          # selectInput("bpVar", "Choose a Variable", choices = sort(names(df)), selected = "P90 - Tou - Att 3rd")
+                          selectInput("bTeamType", "Choose a Team Type", choices = c("Team", "Status"), selected = "Status"),
+                          selectInput("bVar", "Choose a Variable", choices = sort(varCombos), selected = "AT.Mean"),
+                          sliderInput("bWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                         ),
                         
                         mainPanel(
@@ -419,29 +422,30 @@ server <- function(input, output, session) {
 
   }, options = list(pageLength = 10), rownames = FALSE)
   
-  # output$boxPlot <- renderPlot({
-  #   
-  #   boxPlotData <- df
-  #   
-  #   boxPlotData <- na.omit(boxPlotData[, c(input$bpTeamType, input$bpVar)])
-  #   
-  #   p <- ggplot(boxPlotData, aes(x = reorder(get(input$bpTeamType), get(input$bpVar), FUN=mean), y = get(input$bpVar), fill = get(input$bpTeamType))) +
-  #     geom_boxplot() +
-  #     stat_summary(
-  #       fun = mean,
-  #       geom = "point",
-  #       shape = 23,
-  #       size = 3,
-  #       fill = "white",
-  #       color = "black"
-  #     ) +
-  #     labs(title = "Distributions",
-  #          x = input$bpTeamType,
-  #          y = input$bpVar)
-  #   
-  #   p + theme_classic()
-  #   
-  # }, res = 90)
+  output$boxPlot <- renderPlot({
+
+    boxPlotData <- gwdf %>% 
+      Pre_Filter("All", "All", "All", input$bWindow[1], input$bWindow[2]) %>% 
+      Create_Data(c(input$bVar)) %>% 
+      filter(!(Status %in% c("FA")))
+    
+    p <- ggplot(boxPlotData, aes(x = reorder(get(input$bTeamType), get(input$bVar), FUN=mean), y = get(input$bVar), fill = get(input$bTeamType))) +
+      geom_boxplot() +
+      stat_summary(
+        fun = mean,
+        geom = "point",
+        shape = 23,
+        size = 3,
+        fill = "white",
+        color = "black"
+      ) +
+      labs(title = "Distributions",
+           x = input$bTeamType,
+           y = input$bVar)
+
+    p + theme_classic()
+
+  }, res = 90)
 }
 
 # Run the app
