@@ -5,6 +5,7 @@ library(DT)
 library(shinyWidgets)
 library(stats)
 library(PerformanceAnalytics)
+library(httr)
 
 rm(list = ls())
 
@@ -30,6 +31,83 @@ gwdf$Gameweek <- as.numeric(gwdf$Gameweek)
 
 #----------------------- LOAD API DATA -----------------------#
 
+json_rosters <- GET("https://www.fantrax.com/fxea/general/getTeamRosters?leagueId=oped79b5lk6a6edu")
+json_rosters_list <- jsonlite::fromJSON(rawToChar(json_rosters$content))$rosters
+json_eligibility <- GET("https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId=oped79b5lk6a6edu")
+json_eligibility_list <- jsonlite::fromJSON(rawToChar(json_eligibility$content))$playerInfo
+
+# Convert player_status JSON to df
+normalise_eligibility_list <- function(lst) {
+  keys <- c("eligiblePos", "status")
+  sapply(keys, function(k) ifelse(is.null(lst[[k]]), NA, lst[[k]]), simplify = FALSE)
+}
+normalised_eligibility_list <- lapply(json_eligibility_list, normalise_eligibility_list)
+
+# Convert the lists to dataframes
+eligibility <- do.call(rbind, lapply(normalised_eligibility_list, as.data.frame)) %>% 
+  rownames_to_column(var = "ID") %>% 
+  `colnames<-`(c("ID", "position", "Status")) %>% 
+  select(ID, Status)
+
+# Function to extract and combine dataframes
+combine_roster_items <- function(lst) {
+  teamName <- lst$teamName
+  rosterItems <- lst$rosterItems
+  rosterItems$teamName <- teamName
+  return(rosterItems)
+}
+
+teamNames <- c("The 248 Service Crew",
+                "the rats",
+                "Big Mahnchester Utd",
+                "Leeton Orient",
+                "Blakeburn Rovers",
+                "Bede Cosgrove FC",
+                "BenSigmund420 FC",
+                "BigUps FC", 
+                "Jovil Town",
+                "Splitting United",
+                "Lemony Snickets FC",
+                "Stevensage")
+
+shortTeamNames <- c("248 SC",
+               "ratzzz",
+               "Chur",
+               "LTO",
+               "Blkeburn",
+               "BCFC",
+               "BS420FC",
+               "BigUps", 
+               "Joe",
+               "splitt1n",
+               "Snickets",
+               "STV")
+
+# Apply the function to each list and combine the dataframes
+rosters <- do.call(rbind, lapply(json_rosters_list, combine_roster_items)) %>% 
+  rownames_to_column(var = "TeamID") %>% 
+  `colnames<-`(c("TeamID", "ID", "position", "oldStatus", "Status")) %>% 
+  select("ID", "Status") %>% 
+  mutate(Status = case_when(
+    Status == teamNames[1] ~ shortTeamNames[1],
+    Status == teamNames[2] ~ shortTeamNames[2],
+    Status == teamNames[3] ~ shortTeamNames[3],
+    Status == teamNames[4] ~ shortTeamNames[4],
+    Status == teamNames[5] ~ shortTeamNames[5],
+    Status == teamNames[6] ~ shortTeamNames[6],
+    Status == teamNames[7] ~ shortTeamNames[7],
+    Status == teamNames[8] ~ shortTeamNames[8],
+    Status == teamNames[9] ~ shortTeamNames[9],
+    Status == teamNames[10] ~ shortTeamNames[10],
+    Status == teamNames[11] ~ shortTeamNames[11],
+    Status == teamNames[12] ~ shortTeamNames[12],
+    TRUE ~ Status  # Keep other values unchanged
+  ))
+
+latestStatuses <- eligibility %>%
+  left_join(rosters, by = "ID", suffix = c(".old", "")) %>%
+  mutate(Status = ifelse(is.na(Status), Status.old, Status)) %>%
+  select(-Status.old)
 
 #----------------------- DATA CLEANING -----------------------#
 
@@ -43,7 +121,9 @@ gwdf <- gwdf %>%
   mutate(HomeOrAway = ifelse(startsWith(gwdf$Opponent, "@"), "Away", "Home")) %>% 
   #Clean up opponent column
   mutate(Opponent = str_replace(Opponent, Team, "")) %>% 
-  mutate(Opponent = ifelse(startsWith(gwdf$Opponent, " "), substring(gwdf$Opponent,9,11), substring(gwdf$Opponent,1,3))) %>% 
+  mutate(Opponent = ifelse(startsWith(gwdf$Opponent, " "), substring(gwdf$Opponent,9,11), substring(gwdf$Opponent,1,3))) %>%
+  #remove quotes from ID column
+  mutate(ID = gsub("^\\*|\\*$", "", ID)) %>% 
   #Remove the row if they didnt play e.g. Min == 0
   filter(Min != 0)
 
@@ -100,6 +180,13 @@ newRows[, numericColumns] <- newRows[, numericColumns] / 2
 gwdf <- subset(gwdf, GP != 2)
 DGWRowsAndNewRows <- rbind(DGWRows, newRows)
 gwdf <- rbind(gwdf, DGWRowsAndNewRows)
+
+#----------------------- UPDATE TEAMS USING FANTRAX API DATA -----------------------#
+
+gwdf <- gwdf %>%
+  left_join(latestStatuses, by = "ID", suffix = c(".old", "")) %>%
+  mutate(Status = ifelse(is.na(Status), Status.old, Status)) %>%
+  select(-Status.old)
 
 #----------------------- FUNCTIONS -----------------------#
 
@@ -199,18 +286,18 @@ Add_Statistic <- function(df, filtered_gwdf, var, stat){
   return(df)
 }
 
-Post_Filter <- function(df, minMins){
+Post_Filter <- function(df, minMins, minFPts.mean, maxFPts.mean, minFPts.90, maxFPts.90){
   
-  df <- df %>% filter(Min >= minMins)
-  #   filter(FPts.Mean >= minFPts.mean) %>% 
-  #   filter(FPts.Mean <= maxFPts.mean) %>% 
-  #   filter(FPts.90 >= minFPts.90) %>% 
-  #   filter(FPts.90 <= maxFPts.90)
+  df <- df %>%
+    filter(Min >= minMins) %>% 
+    filter(FPts.Mean >= minFPts.mean & FPts.Mean <= maxFPts.mean) %>%
+    filter(FPts.90 >= minFPts.90 & FPts.90 <= maxFPts.90)
   
   return(df)
 }
 
 #----------------------- CREATE BASE SUMMARY DF -----------------------#
+
 #Both as a template to add columns to, and for the sliders
 baseDF <- gwdf %>%
   #get the data from the latest gameweek and select only certain columns
@@ -288,12 +375,17 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
+  if (any(!rosters$teamName %in% shortTeamNames)) {
+    shiny::stopApp()
+    print("There is an issue with the team names. Stopping execution.")
+  }
+  
   output$plot <- renderPlot({
     
     plotData <- gwdf %>% 
       Pre_Filter(input$pTeam, input$pStatus, input$pPosition, input$pWindow[1], input$pWindow[2]) %>% 
       Create_Data(c(input$pXVar, input$pYVar)) %>% 
-      Post_Filter(input$pMinMins)
+      Post_Filter(input$pMinMins, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2])
       
     
     ggplot(plotData, aes(colour = Position)) + 
