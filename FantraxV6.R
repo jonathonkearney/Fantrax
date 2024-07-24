@@ -328,8 +328,8 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(gwdf$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "G.Mean"),
-                          selectInput("pYVar", "Select Y-axis:", choices = sort(varCombos), selected = "AT.Mean"),
+                          selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "SFTP.MeanMnsDD"),
+                          selectInput("pYVar", "Select Y-axis:", choices = sort(varCombos), selected = "TkWAndIntAndCLR.MeanMnsDD"),
                           sliderInput("pWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = 0, max = max(sliderDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pFPts.Mean", "FPts.Mean", min = min(sliderDF$FPts.Mean, na.rm = TRUE), max = max(sliderDF$FPts.Mean, na.rm = TRUE), value = c(0, max(sliderDF$FPts.Mean, na.rm = TRUE))),
@@ -412,8 +412,8 @@ server <- function(input, output, session) {
   
   output$table = DT::renderDataTable({
   
-    extra_cols <- c("Min.Mean", "FPts.MeanMnsDD", "SFTP.90", "KP.90",
-                    "Pts.90", "CS.90", "GS.Mean")
+    extra_cols <- c("FPts.MeanMnsDD", "Min.Mean", "SFTP.90", "KP.90",
+                    "Pts.90", "CS.90", "GS.Mean", "TkWAndIntAndCLR.MeanMnsDD")
     
     tableData <- gwdf %>% 
       Pre_Filter(input$tTeam, input$tStatus, input$tPosition, input$tWindow[1], input$tWindow[2]) %>% 
@@ -427,7 +427,7 @@ server <- function(input, output, session) {
     boxPlotData <- gwdf %>% 
       Pre_Filter("All", "All", "All", input$bWindow[1], input$bWindow[2]) %>% 
       Create_Data(c(input$bVar)) %>% 
-      filter(!(Status %in% c("FA")))
+      filter(!(Status %in% c("FA")) & !grepl("^W \\(", Status))
     
     p <- ggplot(boxPlotData, aes(x = reorder(get(input$bTeamType), get(input$bVar), FUN=mean), y = get(input$bVar), fill = get(input$bTeamType))) +
       geom_boxplot() +
