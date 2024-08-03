@@ -12,8 +12,6 @@ rm(list = ls())
 setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxV6")
 
 #----------------------- ISSUES -----------------------#
-#RODRI DISSAPEARS IF YOU PULL THE LEFT GAMEWEEK SLIDER UP TO GAMEWEEK 7...
-#SAKA DISSAPEARS IF YOU PULL THE LEFT GAMEWEEK SLIDER UP TO GAMEWEEK 18...
 
 #----------------------- LOADING DATA -----------------------#
 
@@ -309,12 +307,6 @@ Post_Filter <- function(df, minMins, minFPts.mean, maxFPts.mean, minFPts.90, max
     filter(FPts.Mean >= minFPts.mean & FPts.Mean <= maxFPts.mean) %>%
     filter(FPts.90 >= minFPts.90 & FPts.90 <= maxFPts.90)
   
-  if ("Bukayo Saka" %in% df$Player) {
-    print("YES - Bukayo Saka is in the Player column.")
-  } else {
-    print("NO - Bukayo Saka is not in the Player column.")
-  }
-  
   return(df)
 }
 
@@ -346,7 +338,7 @@ ui <- fluidPage(
                           sliderInput("pWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = 0, max = max(sliderDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pFPts.Mean", "FPts.Mean", min = 0, max = max(gwdf$FPts, na.rm = TRUE), value = c(0, max(gwdf$FPts, na.rm = TRUE))),
-                          sliderInput("pFPts.90", "FPts per 90", min = 0, max = max(sliderDF$FPts.90, na.rm = TRUE), value = c(0, max(sliderDF$FPts.90, na.rm = TRUE))),
+                          sliderInput("pFPts.90", "FPts per 90", min = 0, max = 100, value = c(0, 100)),
                           
                          
                           
@@ -368,7 +360,7 @@ ui <- fluidPage(
                           sliderInput("tWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                           sliderInput("tMinMins", "Minimum Total Minutes", min = 0, max = max(sliderDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("tFPts.Mean", "FPts.Mean", min = 0, max = max(gwdf$FPts, na.rm = TRUE), value = c(0, max(gwdf$FPts, na.rm = TRUE))),
-                          sliderInput("tFPts.90", "FPts per 90", min = 0, max = max(sliderDF$FPts.90, na.rm = TRUE), value = c(0, max(sliderDF$FPts.90, na.rm = TRUE)))
+                          sliderInput("tFPts.90", "FPts per 90", min = 0, max = 100, value = c(0, 100)),
                           
                         ),
                         
