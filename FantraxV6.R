@@ -11,6 +11,10 @@ rm(list = ls())
 
 setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxV6")
 
+#----------------------- ISSUES -----------------------#
+#RODRI DISSAPEARS IF YOU PULL THE LEFT GAMEWEEK SLIDER UP TO GAMEWEEK 7...
+#SAKA DISSAPEARS IF YOU PULL THE LEFT GAMEWEEK SLIDER UP TO GAMEWEEK 18...
+
 #----------------------- LOADING DATA -----------------------#
 
 files <- list.files(path = "Gameweeks")
@@ -299,10 +303,17 @@ Add_Statistic <- function(df, filtered_gwdf, var, stat){
 
 Post_Filter <- function(df, minMins, minFPts.mean, maxFPts.mean, minFPts.90, maxFPts.90){
   
+  
   df <- df %>%
     filter(Min >= minMins) %>% 
     filter(FPts.Mean >= minFPts.mean & FPts.Mean <= maxFPts.mean) %>%
     filter(FPts.90 >= minFPts.90 & FPts.90 <= maxFPts.90)
+  
+  if ("Bukayo Saka" %in% df$Player) {
+    print("YES - Bukayo Saka is in the Player column.")
+  } else {
+    print("NO - Bukayo Saka is not in the Player column.")
+  }
   
   return(df)
 }
@@ -313,7 +324,9 @@ Post_Filter <- function(df, minMins, minFPts.mean, maxFPts.mean, minFPts.90, max
 sliderDF <- template %>% 
   Add_Statistic(gwdf, "Min", "Sum") %>%
   Add_Statistic(gwdf, "FPts", "Mean") %>%
-  Add_Statistic(gwdf, "FPts", "90")
+  Add_Statistic(gwdf, "FPts", "90") %>% 
+  #Filter out players with like 1 minute that push the max FPts.90 to like 200
+  filter(Min > 10)
   
 #---------------------------------------------- UI ----------------------------------------------#
 
@@ -332,8 +345,8 @@ ui <- fluidPage(
                           selectInput("pYVar", "Select Y-axis:", choices = sort(varCombos), selected = "TkWAndIntAndCLR.MeanMnsDD"),
                           sliderInput("pWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = 0, max = max(sliderDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
-                          sliderInput("pFPts.Mean", "FPts.Mean", min = min(sliderDF$FPts.Mean, na.rm = TRUE), max = max(sliderDF$FPts.Mean, na.rm = TRUE), value = c(0, max(sliderDF$FPts.Mean, na.rm = TRUE))),
-                          sliderInput("pFPts.90", "FPts per 90", min = min(sliderDF$FPts.90, na.rm = TRUE), max = max(sliderDF$FPts.90, na.rm = TRUE), value = c(0, max(sliderDF$FPts.90, na.rm = TRUE))),
+                          sliderInput("pFPts.Mean", "FPts.Mean", min = 0, max = max(gwdf$FPts, na.rm = TRUE), value = c(0, max(gwdf$FPts, na.rm = TRUE))),
+                          sliderInput("pFPts.90", "FPts per 90", min = 0, max = max(sliderDF$FPts.90, na.rm = TRUE), value = c(0, max(sliderDF$FPts.90, na.rm = TRUE))),
                           
                          
                           
@@ -354,8 +367,8 @@ ui <- fluidPage(
                           pickerInput("tPicker", "Columns", choices = sort(varCombos), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
                           sliderInput("tWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                           sliderInput("tMinMins", "Minimum Total Minutes", min = 0, max = max(sliderDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
-                          sliderInput("tFPts.Mean", "FPts.Mean", min = min(sliderDF$FPts.Mean, na.rm = TRUE), max = max(sliderDF$FPts.Mean, na.rm = TRUE), value = c(0, max(sliderDF$FPts.Mean, na.rm = TRUE))),
-                          sliderInput("tFPts.90", "FPts per 90", min = min(sliderDF$FPts.90, na.rm = TRUE), max = max(sliderDF$FPts.90, na.rm = TRUE), value = c(0, max(sliderDF$FPts.90, na.rm = TRUE)))
+                          sliderInput("tFPts.Mean", "FPts.Mean", min = 0, max = max(gwdf$FPts, na.rm = TRUE), value = c(0, max(gwdf$FPts, na.rm = TRUE))),
+                          sliderInput("tFPts.90", "FPts per 90", min = 0, max = max(sliderDF$FPts.90, na.rm = TRUE), value = c(0, max(sliderDF$FPts.90, na.rm = TRUE)))
                           
                         ),
                         
