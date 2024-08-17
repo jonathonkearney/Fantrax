@@ -336,12 +336,12 @@ sliderDF <- template %>%
 #---------------------------------------------- RANDOM ----------------------------------------------#
 
 
-# modelData <- gwdf %>% 
-#   filter(Player == "Murillo")
+# modelData <- gwdf %>%
+#   filter(Player == "Casemiro")
 # 
 # model <- lm(data = modelData, FPts~Min+G+A+S+SOT+YC+RC+A2+KP+AT+TkW+DIS+ErG+AP+SFTP+ACNC+Int+CLR+CoS+AER+OG+GAD+CSD+CSM+FS+DPt+CS)
 # modeldf <- tidy(model)
-#   
+# modeldf
 
 #---------------------------------------------- UI ----------------------------------------------#
 
@@ -399,7 +399,7 @@ ui <- fluidPage(
                         sidebarPanel(
                           width = "2",
                           selectInput("bTeamType", "Choose a Team Type", choices = c("Team", "Status"), selected = "Status"),
-                          selectInput("bVar", "Choose a Variable", choices = sort(varCombos), selected = "AT.Mean"),
+                          selectInput("bVar", "Choose a Variable", choices = sort(varCombos), selected = "FPts.Mean"),
                           sliderInput("bWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                         ),
                         
@@ -459,7 +459,9 @@ server <- function(input, output, session) {
       Create_Data(c(input$bVar)) %>% 
       filter(!(Status %in% c("FA")) & !grepl("^W \\(", Status))
     
-    p <- ggplot(boxPlotData, aes(x = reorder(get(input$bTeamType), get(input$bVar), FUN=mean), y = get(input$bVar), fill = get(input$bTeamType))) +
+    print(boxPlotData)
+    
+    p <- ggplot(boxPlotData, aes(x = reorder(get(input$bTeamType), get(input$bVar), FUN=mean, na.rm = T ), y = get(input$bVar), fill = get(input$bTeamType))) +
       geom_boxplot() +
       stat_summary(
         fun = mean,
@@ -471,7 +473,8 @@ server <- function(input, output, session) {
       ) +
       labs(title = "Distributions",
            x = input$bTeamType,
-           y = input$bVar)
+           y = input$bVar,
+           fill = input$bTeamType)
 
     p + theme_classic()
 
