@@ -6,12 +6,17 @@ library(shinyWidgets)
 library(stats)
 library(PerformanceAnalytics)
 library(httr)
+library(broom)
+library(moments)
 
 rm(list = ls())
 
 setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxV6")
 
 #----------------------- ISSUES -----------------------#
+
+#Will need to change the league ID in the url for the Fantrax API
+#Will need to adjust the teamnames in the API data
 
 #----------------------- LOADING DATA -----------------------#
 
@@ -33,9 +38,9 @@ gwdf$Gameweek <- as.numeric(gwdf$Gameweek)
 
 #----------------------- LOAD API DATA -----------------------#
 
-json_rosters <- GET("https://www.fantrax.com/fxea/general/getTeamRosters?leagueId=oped79b5lk6a6edu")
+json_rosters <- GET("https://www.fantrax.com/fxea/general/getTeamRosters?leagueId=vg93n1omlzf9qj69")
 json_rosters_list <- jsonlite::fromJSON(rawToChar(json_rosters$content))$rosters
-json_eligibility <- GET("https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId=oped79b5lk6a6edu")
+json_eligibility <- GET("https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId=vg93n1omlzf9qj69")
 json_eligibility_list <- jsonlite::fromJSON(rawToChar(json_eligibility$content))$playerInfo
 
 # Convert player_status JSON to df
@@ -59,7 +64,7 @@ combine_roster_items <- function(lst) {
   return(rosterItems)
 }
 
-teamNames <- c("The 248 Service Crew",
+teamNames <- c("Whakarongo Wanderers",
                 "the rats",
                 "Big Mahnchester Utd",
                 "Leeton Orient",
@@ -72,7 +77,7 @@ teamNames <- c("The 248 Service Crew",
                 "Lemony Snickets FC",
                 "Stevensage")
 
-shortTeamNames <- c("248 SC",
+shortTeamNames <- c("WHUKS",
                "ratzzz",
                "Chur",
                "LTO",
@@ -111,14 +116,6 @@ latestStatuses <- eligibility %>%
   mutate(Status = ifelse(is.na(Status), Status.old, Status)) %>%
   select(-Status.old)
 
-#----------------------- TEMPLATE -----------------------#
-
-#Template needs to be made first before you remove rows with 0 mins
-template <- subset(gwdf, Gameweek == max(gwdf$Gameweek)) %>% 
-  select(c(Player, Team, Position, Status)) %>% 
-  #remove the extra team name for the players who have moved teams
-  mutate(Team = sub(".*/", "", Team)) 
-
 #----------------------- DATA CLEANING -----------------------#
 
 #remove comma from data$Min and AP and convert to numeric 
@@ -135,9 +132,23 @@ gwdf <- gwdf %>%
   #remove quotes from ID column
   mutate(ID = gsub("^\\*|\\*$", "", ID)) %>%
   #remove the extra team name for the players who have moved teams
-  mutate(Team = sub(".*/", "", Team)) %>% 
+  mutate(Team = sub(".*/", "", Team))
+
+#----------------------- TEMPLATE -----------------------#
+
+#Template needs to be made first before you remove rows with 0 mins
+template <- subset(gwdf, Gameweek == max(gwdf$Gameweek)) %>% 
+  select(c(Player, Team, Position, Status, Opponent)) %>% 
+  #remove the extra team name for the players who have moved teams
+  mutate(Team = sub(".*/", "", Team)) 
+
+
+#----------------------- REMOVE ROWS WITH 0 MINS -----------------------#
+  
+  #this has to be done last. After the template is made
   #Remove the row if they didnt play e.g. Min == 0
-  filter(Min != 0)
+  gwdf <- gwdf %>% 
+    filter(Min != 0)
 
 #----------------------- NEW GW COLUMNS -----------------------#
 
@@ -160,13 +171,13 @@ characterColumns <- c("Gameweek", "ID", "Player", "Team", "Position", "RkOv",
 numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC", "RC", "A2","KP",
                      "AT", "TkW", "DIS", "ErG", "AP", "SFTP", "ACNC", "Int",
                      "CLR", "CoS", "AER", "PKM", "OG", "GAD", "CSD", "CSM",
-                     "FC", "FS", "DPt", "Off", "CS",  "TkWAndIntAndCLR",
-                     "SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
+                     "FC", "FS", "DPt", "Off", "CS", "TLM", "LBA", "CLO", "BS",
+                     "TkWAndIntAndCLR", "SOTAndKP", "CoSMinusDIS", "SOTMinusG", "KPMinusA")
 
 #Variable and calculation combos for dropdowns
 varCombos <- numericColumns
 for(i in numericColumns){
-  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMnsDD", "LQ")){
+  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMnsDD", "LQ", "Skew")){
     varCombos <- c(varCombos, paste(i, j, sep = "."))
   }
 }
@@ -208,10 +219,10 @@ Pre_Filter <- function(df, team, status, position, startGW, endGW){
   }
   if (status != "All") {
     if (status == "Waiver") {
-      df <- df %>% filter(str_detect(df$Status, "^W \\("))
+      df <- df %>% filter(str_detect(df$Status, "^W \\(") | df$Status == "WW")
     }
     else if (status == "All Available") {
-      df <- df %>% filter(str_detect(df$Status, "^W \\(") | str_detect(df$Status, "^FA"))
+      df <- df %>% filter(str_detect(df$Status, "^W \\(") | str_detect(df$Status, "^FA") | df$Status == "WW")
     }
     else if (status == "All Taken") {
       df <- df %>% filter(!Status %in% statuses)
@@ -242,7 +253,7 @@ Create_Data <- function(filtered_gwdf, cols){
   df <- template
   
   #add in base cols
-  cols <- c("Min", "FPts.Mean", "FPts.90", cols)
+  cols <- c("Min", "Min.Mean", "FPts.Mean", "FPts.90",  cols)
   
   for(i in cols){
     if(!(i %in% colnames(df))){
@@ -275,6 +286,7 @@ Add_Statistic <- function(df, filtered_gwdf, var, stat){
                           LQ = function(df) quantile(df[[var]], na.rm = TRUE)[[2]],
                           MAD = function(df) mad(df[[var]], constant = 1, na.rm = TRUE),
                           DownDev = function(df) round(DownsideDeviation(df[[var]], MAR = mean(df[[var]], na.rm = TRUE), na.rm = TRUE), 2),
+                          Skew = function(df) round(skewness(df[[var]], na.rm = TRUE), 3),
                           MeanMnsDD = function(df) {
                             mean_val <- mean(df[[var]], na.rm = TRUE)
                             downDev_val <- DownsideDeviation(df[[var]], MAR = mean_val, na.rm = TRUE)
@@ -299,13 +311,14 @@ Add_Statistic <- function(df, filtered_gwdf, var, stat){
   return(df)
 }
 
-Post_Filter <- function(df, minMins, minFPts.mean, maxFPts.mean, minFPts.90, maxFPts.90){
+Post_Filter <- function(df, minMins, minMin.mean, minFPts.mean, maxFPts.mean, minFPts.90, maxFPts.90){
   
   
   df <- df %>%
     filter(Min >= minMins) %>% 
     filter(FPts.Mean >= minFPts.mean & FPts.Mean <= maxFPts.mean) %>%
-    filter(FPts.90 >= minFPts.90 & FPts.90 <= maxFPts.90)
+    filter(FPts.90 >= minFPts.90 & FPts.90 <= maxFPts.90) %>% 
+    filter(Min.Mean >= minMin.mean)
   
   return(df)
 }
@@ -316,11 +329,22 @@ Post_Filter <- function(df, minMins, minFPts.mean, maxFPts.mean, minFPts.90, max
 sliderDF <- template %>% 
   Add_Statistic(gwdf, "Min", "Sum") %>%
   Add_Statistic(gwdf, "FPts", "Mean") %>%
-  Add_Statistic(gwdf, "FPts", "90") %>% 
+  Add_Statistic(gwdf, "FPts", "90") %>%
+  # Add_Statistic(gwdf, "Min", "Mean") %>%
   #Filter out players with like 1 minute that push the max FPts.90 to like 200
   filter(Min > 10)
-  
+#---------------------------------------------- RANDOM ----------------------------------------------#
+
+
+# modelData <- gwdf %>% 
+#   filter(Player == "Murillo")
+# 
+# model <- lm(data = modelData, FPts~Min+G+A+S+SOT+YC+RC+A2+KP+AT+TkW+DIS+ErG+AP+SFTP+ACNC+Int+CLR+CoS+AER+OG+GAD+CSD+CSM+FS+DPt+CS)
+# modeldf <- tidy(model)
+#   
+
 #---------------------------------------------- UI ----------------------------------------------#
+
 
 ui <- fluidPage(
   
@@ -333,8 +357,8 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(gwdf$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "SFTP.MeanMnsDD"),
-                          selectInput("pYVar", "Select Y-axis:", choices = sort(varCombos), selected = "TkWAndIntAndCLR.MeanMnsDD"),
+                          selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "FPts.Mean"),
+                          selectInput("pYVar", "Select Y-axis:", choices = sort(varCombos), selected = "FPts.90"),
                           sliderInput("pWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = 0, max = max(sliderDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
                           sliderInput("pFPts.Mean", "FPts.Mean", min = 0, max = max(gwdf$FPts, na.rm = TRUE), value = c(0, max(gwdf$FPts, na.rm = TRUE))),
@@ -359,6 +383,7 @@ ui <- fluidPage(
                           pickerInput("tPicker", "Columns", choices = sort(varCombos), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
                           sliderInput("tWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                           sliderInput("tMinMins", "Minimum Total Minutes", min = 0, max = max(sliderDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
+                          sliderInput("tMin.Mean", "Minimum Avg Mins", min = 0, max = 90, value = 0),
                           sliderInput("tFPts.Mean", "FPts.Mean", min = 0, max = max(gwdf$FPts, na.rm = TRUE), value = c(0, max(gwdf$FPts, na.rm = TRUE))),
                           sliderInput("tFPts.90", "FPts per 90", min = 0, max = 100, value = c(0, 100)),
                           
@@ -398,7 +423,8 @@ server <- function(input, output, session) {
     plotData <- gwdf %>% 
       Pre_Filter(input$pTeam, input$pStatus, input$pPosition, input$pWindow[1], input$pWindow[2]) %>% 
       Create_Data(c(input$pXVar, input$pYVar)) %>% 
-      Post_Filter(input$pMinMins, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2])
+      #Added in 0 for Min.Mean because the Plot doesn't filter by average Mins
+      Post_Filter(input$pMinMins, 0, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2])
       
     
     ggplot(plotData, aes(colour = Position)) + 
@@ -417,15 +443,14 @@ server <- function(input, output, session) {
   
   output$table = DT::renderDataTable({
   
-    extra_cols <- c("FPts.MeanMnsDD", "Min.Mean", "SFTP.90", "KP.90",
-                    "Pts.90", "CS.90", "GS.Mean", "TkWAndIntAndCLR.MeanMnsDD")
+    extra_cols <- c("FPts.MeanMnsDD", "FPts.DownDev", "FPts.Skew", "FPts.SD", "Pts.90")
     
     tableData <- gwdf %>% 
       Pre_Filter(input$tTeam, input$tStatus, input$tPosition, input$tWindow[1], input$tWindow[2]) %>% 
       Create_Data(c(extra_cols, input$tPicker)) %>% 
-      Post_Filter(input$tMinMins, input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2])
+      Post_Filter(input$tMinMins, input$tMin.Mean, input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2])
 
-  }, options = list(pageLength = 10), rownames = FALSE)
+  }, options = list(pageLength = 12), rownames = FALSE)
   
   output$boxPlot <- renderPlot({
 
