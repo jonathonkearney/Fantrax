@@ -134,6 +134,14 @@ gwdf <- gwdf %>%
   #remove the extra team name for the players who have moved teams
   mutate(Team = sub(".*/", "", Team))
 
+#----------------------- UPDATE TEAMS USING FANTRAX API DATA -----------------------#
+
+#This needs to be done before making the Template
+gwdf <- gwdf %>%
+  left_join(latestStatuses, by = "ID", suffix = c(".old", "")) %>%
+  mutate(Status = ifelse(is.na(Status), Status.old, Status)) %>%
+  select(-Status.old)
+
 #----------------------- TEMPLATE -----------------------#
 
 #Template needs to be made first before you remove rows with 0 mins
@@ -198,13 +206,6 @@ newRows[, numericColumns] <- newRows[, numericColumns] / 2
 gwdf <- subset(gwdf, GP != 2)
 DGWRowsAndNewRows <- rbind(DGWRows, newRows)
 gwdf <- rbind(gwdf, DGWRowsAndNewRows)
-
-#----------------------- UPDATE TEAMS USING FANTRAX API DATA -----------------------#
-
-gwdf <- gwdf %>%
-  left_join(latestStatuses, by = "ID", suffix = c(".old", "")) %>%
-  mutate(Status = ifelse(is.na(Status), Status.old, Status)) %>%
-  select(-Status.old)
 
 #----------------------- FUNCTIONS -----------------------#
 
@@ -457,9 +458,7 @@ server <- function(input, output, session) {
     boxPlotData <- gwdf %>% 
       Pre_Filter("All", "All", "All", input$bWindow[1], input$bWindow[2]) %>% 
       Create_Data(c(input$bVar)) %>% 
-      filter(!(Status %in% c("FA")) & !grepl("^W \\(", Status))
-    
-    print(boxPlotData)
+      filter(!(Status %in% c("FA")) & !grepl("^W \\(", Status) & Status != "WW")
     
     p <- ggplot(boxPlotData, aes(x = reorder(get(input$bTeamType), get(input$bVar), FUN=mean, na.rm = T ), y = get(input$bVar), fill = get(input$bTeamType))) +
       geom_boxplot() +
