@@ -128,7 +128,7 @@ gwdf <- gwdf %>%
   mutate(HomeOrAway = ifelse(startsWith(gwdf$Opponent, "@"), "Away", "Home")) %>% 
   #Clean up opponent column
   mutate(Opponent = str_replace(Opponent, Team, "")) %>% 
-  mutate(Opponent = ifelse(startsWith(gwdf$Opponent, " "), substring(gwdf$Opponent,9,11), substring(gwdf$Opponent,1,3))) %>%
+  mutate(Opponent = ifelse(grepl("<br/>", Opponent), Opponent, sub(".*([A-Z]{3}).*", "\\1", Opponent))) %>%
   #remove quotes from ID column
   mutate(ID = gsub("^\\*|\\*$", "", ID)) %>%
   #remove the extra team name for the players who have moved teams
@@ -171,7 +171,7 @@ gwdf <- gwdf %>%
 #----------------------- GLOBAL VARIABLES -----------------------#
 
 #Statuses
-statuses <- c("W (Mon)", "W (Tue)", "W (Wed)", "W (Thu)", "W (Fri)", "W (Sat)", "W (Sun)", "FA")
+statuses <- c("W (Mon)", "W (Tue)", "W (Wed)", "W (Thu)", "W (Fri)", "W (Sat)", "W (Sun)", "FA", "WW")
 
 characterColumns <- c("Gameweek", "ID", "Player", "Team", "Position", "RkOv",
                       "Status", "Opponent", "Ros..", "X...", "PC.", "HomeOrAway")
@@ -185,7 +185,7 @@ numericColumns <-  c("Min", "FPts", "GP", "GS", "G", "A", "Pts", "S", "SOT", "YC
 #Variable and calculation combos for dropdowns
 varCombos <- numericColumns
 for(i in numericColumns){
-  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMnsDD", "LQ", "Skew")){
+  for(j in c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMnsDD", "LQ", "Skew", "FormAdj", "Form")){
     varCombos <- c(varCombos, paste(i, j, sep = "."))
   }
 }
@@ -208,6 +208,11 @@ DGWRowsAndNewRows <- rbind(DGWRows, newRows)
 gwdf <- rbind(gwdf, DGWRowsAndNewRows)
 
 #----------------------- FUNCTIONS -----------------------#
+
+Add_Points <- function(df){
+  
+
+}
 
 #Filter the dataframe
 Pre_Filter <- function(df, team, status, position, startGW, endGW){
@@ -276,7 +281,6 @@ Create_Data <- function(filtered_gwdf, cols){
   return(df)
 }
 
-
 Add_Statistic <- function(df, filtered_gwdf, var, stat){
   
   stat_function <- switch(stat,
@@ -296,6 +300,28 @@ Add_Statistic <- function(df, filtered_gwdf, var, stat){
                           `90` = function(df) {
                             minutes <- sum(df$Min, na.rm = TRUE)
                             round((sum(df[[var]], na.rm = TRUE) / minutes) * 90, 2)
+                          },
+                          FormAdj = function(df) {
+                            df <- df[order(df$Gameweek, decreasing = TRUE), ]  # Sort by recent gameweek
+                            decay_start <- 1
+                            decay_step <- 0.2 #This dictates how aggresively it weights gameweeks
+                            decay_factor <- pmax(decay_start - ((1:nrow(df) - 1) * decay_step), 0)  # Weights: 1, 0.9, 0.8, ...
+                            weighted_sum <- sum(df[[var]] * decay_factor, na.rm = TRUE)
+                            total_weight <- sum(decay_factor[!is.na(df[[var]])])  # Adjust for NAs
+                            round(weighted_sum / total_weight, 2)  # Return weighted average
+                          },
+                          Form = function(df) {
+                            df <- df[order(df$Gameweek, decreasing = TRUE), ]  # Sort by recent gameweek
+                            decay_start <- 1
+                            decay_step <- 0.2 #This dictates how aggresively it weights gameweeks
+                            decay_factor <- pmax(decay_start - ((1:nrow(df) - 1) * decay_step), 0)  # Weights: 1, 0.9, 0.8, ...
+                            weighted_sum <- sum(df[[var]] * decay_factor, na.rm = TRUE)
+                            total_weight <- sum(decay_factor[!is.na(df[[var]])])  # Adjust for NAs
+                            formAdj <- round(weighted_sum / total_weight, 2)
+                            
+                            mean_val <- mean(df[[var]], na.rm = TRUE)
+                            if (mean_val == 0) return(rep(0, nrow(df)))  # If no variation, return 0 for all players
+                            round(formAdj / mean_val, 2)
                           },
                           stop("Invalid statistic"))
   
@@ -338,11 +364,31 @@ sliderDF <- template %>%
 
 
 # modelData <- gwdf %>%
-#   filter(Player == "Casemiro")
+#   filter(Min > 25)
 # 
 # model <- lm(data = modelData, FPts~Min+G+A+S+SOT+YC+RC+A2+KP+AT+TkW+DIS+ErG+AP+SFTP+ACNC+Int+CLR+CoS+AER+OG+GAD+CSD+CSM+FS+DPt+CS)
 # modeldf <- tidy(model)
 # modeldf
+
+PointMeans <- gwdf %>% 
+  filter(Status != "FA" & Status != "WW") %>% 
+  summarise(TKW_Pts = (sum(TkW)*1.5)/length(unique(Status)),
+            KP_Pts = (sum(KP)*2)/length(unique(Status)),
+            AT_Pts = (sum(AT)*6)/length(unique(Status)),
+            SOT_Pts = (sum(SOT)*2)/length(unique(Status)),
+            G_Pts = (sum(G)*9)/length(unique(Status)),
+            CLR_Pts = (sum(CLR)*1)/length(unique(Status)),
+            Int_Pts = (sum(Int)*1)/length(unique(Status)),
+            SFTP_Pts = ((sum(SFTP)%/%6)*1)/length(unique(Status)),
+            )
+
+# teamRanking <- gwdf %>%
+#   filter(Min > 30) %>%
+#   group_by(Team) %>%
+#   summarise(FPts.90 = mean((FPts/Min)*90)) %>%
+#   mutate(AdjValue = ((FPts.90 - mean(FPts.90)) / mean(FPts.90) * -1) + 1)
+
+
 
 #---------------------------------------------- UI ----------------------------------------------#
 
@@ -444,7 +490,7 @@ server <- function(input, output, session) {
   
   output$table = DT::renderDataTable({
   
-    extra_cols <- c("FPts.MeanMnsDD", "FPts.DownDev", "FPts.Skew", "FPts.SD", "Pts.90")
+    extra_cols <- c("FPts.MeanMnsDD", "FPts.DownDev", "FPts.Form", "FPts.FormAdj", "FPts.Skew", "Pts.90")
     
     tableData <- gwdf %>% 
       Pre_Filter(input$tTeam, input$tStatus, input$tPosition, input$tWindow[1], input$tWindow[2]) %>% 
