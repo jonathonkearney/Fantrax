@@ -259,7 +259,7 @@ Create_Data <- function(filtered_gwdf, cols){
   df <- template
   
   #add in base cols
-  cols <- c("Min", "Min.Mean", "FPts.Mean", "FPts.90",  cols)
+  cols <- c("Min", "Min.Mean", "Min.Form", "FPts.Mean", "FPts.90",  cols)
   
   for(i in cols){
     if(!(i %in% colnames(df))){
@@ -404,7 +404,7 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(gwdf$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "FPts.Mean"),
+                          selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "Min.Form"),
                           selectInput("pYVar", "Select Y-axis:", choices = sort(varCombos), selected = "FPts.90"),
                           sliderInput("pWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = 0, max = max(sliderDF$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
@@ -490,7 +490,7 @@ server <- function(input, output, session) {
   
   output$table = DT::renderDataTable({
   
-    extra_cols <- c("FPts.MeanMnsDD", "FPts.DownDev", "FPts.Form", "FPts.FormAdj", "FPts.Skew", "Pts.90")
+    extra_cols <- c("FPts.MeanMnsDD", "FPts.DownDev", "FPts.Form", "FPts.FormAdj", "Pts.90")
     
     tableData <- gwdf %>% 
       Pre_Filter(input$tTeam, input$tStatus, input$tPosition, input$tWindow[1], input$tWindow[2]) %>% 
