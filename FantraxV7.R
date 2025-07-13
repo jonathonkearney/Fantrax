@@ -12,7 +12,7 @@ library(jsonlite)
 
 rm(list = ls())
 
-setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxV6")
+setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxV7")
 
 #----------------------- GLOBAL VARIABLES -----------------------#
 
