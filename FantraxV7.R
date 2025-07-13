@@ -326,85 +326,71 @@ create_dashboard_data <- function(filtered_df, input_cols){
   return(df)
 }
 
-Add_Statistic <- function(df, filtered_df, var, stat){
+#Individual Stat functions. So they can call each other
+stat_Sum <- function(df, var) sum(df[[var]], na.rm = TRUE)
+stat_SD <- function(df, var) round(sd(df[[var]], na.rm = TRUE), 2)
+stat_Mean <- function(df, var) round(mean(df[[var]], na.rm = TRUE), 2)
+stat_Med <- function(df, var) median(df[[var]], na.rm = TRUE)
+stat_LQ <- function(df, var) quantile(df[[var]], na.rm = TRUE)[[2]]
+stat_MAD <- function(df, var) mad(df[[var]], constant = 1, na.rm = TRUE)
+stat_DownDev <- function(df, var) {
+  round(DownsideDeviation(df[[var]], MAR = mean(df[[var]], na.rm = TRUE), na.rm = TRUE), 2)
+}
+stat_Skew <- function(df, var) {
+  round(skewness(df[[var]], na.rm = TRUE), 3)
+}
+stat_MeanMnsDD <- function(df, var) {
+  mean_val <- mean(df[[var]], na.rm = TRUE)
+  downDev_val <- DownsideDeviation(df[[var]], MAR = mean_val, na.rm = TRUE)
+  if (is.na(mean_val) || is.na(downDev_val)) return(NA)
+  round(mean_val - downDev_val, 2)
+}
+stat_90 <- function(df, var) {
+  minutes <- sum(df$Min, na.rm = TRUE)
+  round((sum(df[[var]], na.rm = TRUE) / minutes) * 90, 2)
+}
+stat_FormAdj <- function(df, var) {
+  df <- df[order(df$Gameweek, decreasing = TRUE), ]
+  decay <- pmax(1 - (seq_len(nrow(df)) - 1) * 0.2, 0)
+  weighted_sum <- sum(df[[var]] * decay, na.rm = TRUE)
+  total_weight <- sum(decay[!is.na(df[[var]])])
+  round(weighted_sum / total_weight, 2)
+}
+stat_Form <- function(df, var) {
+  formAdj <- stat_FormAdj(df, var)
+  mean_val <- mean(df[[var]], na.rm = TRUE)
+  if (is.na(mean_val) || mean_val == 0) return(NA)
+  round(formAdj / mean_val, 2)
+}
+
+Add_Statistic <- function(df, filtered_df, var, stat) {
   
-  stat_function <- switch(stat,
-                          Sum = function(df){
-                            sum(df[[var]], na.rm = TRUE)
-                          },
-                          SD = function(df){
-                            round(sd(df[[var]], na.rm = TRUE), 2)
-                          },
-                          Mean = function(df){
-                            round(mean(df[[var]], na.rm = TRUE), 2)
-                          },
-                          Med = function(df){
-                            median(df[[var]], na.rm = TRUE)
-                          },
-                          LQ = function(df){
-                            quantile(df[[var]], na.rm = TRUE)[[2]]
-                          },
-                          MAD = function(df){
-                            mad(df[[var]], constant = 1, na.rm = TRUE)
-                          },
-                          DownDev = function(df){
-                            round(DownsideDeviation(df[[var]], MAR = mean(df[[var]], na.rm = TRUE), na.rm = TRUE), 2)
-                          },
-                          Skew = function(df){
-                            round(skewness(df[[var]], na.rm = TRUE), 3)
-                          },
-                          MeanMnsDD = function(df){
-                            mean_val <- mean(df[[var]], na.rm = TRUE)
-                            downDev_val <- DownsideDeviation(df[[var]], MAR = mean_val, na.rm = TRUE)
-                            if (is.na(mean_val) || is.na(downDev_val)) return(NA) 
-                            round(mean_val - downDev_val, 2)
-                          }
-                          ,
-                          `90` = function(df){
-                            minutes <- sum(df$Min, na.rm = TRUE)
-                            round((sum(df[[var]], na.rm = TRUE) / minutes) * 90, 2)
-                          },
-                          FormAdj = function(df){
-                            df <- df[order(df$Gameweek, decreasing = TRUE), ]  # Sort by recent gameweek
-                            decay_start <- 1
-                            decay_step <- 0.2 #This dictates how aggresively it weights gameweeks
-                            decay_factor <- pmax(decay_start - ((1:nrow(df) - 1) * decay_step), 0)  # Weights: 1, 0.9, 0.8, ...
-                            weighted_sum <- sum(df[[var]] * decay_factor, na.rm = TRUE)
-                            total_weight <- sum(decay_factor[!is.na(df[[var]])])  # Adjust for NAs
-                            round(weighted_sum / total_weight, 2)  # Return weighted average
-                          },
-                          Form = function(df) {
-                            df <- df[order(df$Gameweek, decreasing = TRUE), ]  # Sort by recent gameweek
-                            decay_start <- 1
-                            decay_step <- 0.2
-                            decay_factor <- pmax(decay_start - ((1:nrow(df) - 1) * decay_step), 0)
-                            
-                            weighted_sum <- sum(df[[var]] * decay_factor, na.rm = TRUE)
-                            total_weight <- sum(decay_factor[!is.na(df[[var]])])
-                            formAdj <- round(weighted_sum / total_weight, 2)
-                            
-                            mean_val <- mean(df[[var]], na.rm = TRUE)
-                            
-                            if (is.na(mean_val) || mean_val == 0) return(0)
-                            round(formAdj / mean_val, 2)
-                          },
-                          stop("Invalid statistic"))
+  stat_functions <- list(
+    Sum = stat_Sum,
+    SD = stat_SD,
+    Mean = stat_Mean,
+    Med = stat_Med,
+    LQ = stat_LQ,
+    MAD = stat_MAD,
+    DownDev = stat_DownDev,
+    Skew = stat_Skew,
+    MeanMnsDD = stat_MeanMnsDD,
+    `90` = stat_90,
+    FormAdj = stat_FormAdj,
+    Form = stat_Form
+  )
+  
+  stat_function <- stat_functions[[stat]]
+  if (is.null(stat_function)) stop("Invalid statistic")
   
   colName <- ifelse(stat != "Sum", paste0(var, ".", stat), var)
   
-  #create the stat column then join it to the df by player
   df <- df %>%
     left_join(
       filtered_df %>%
         group_by(Player) %>%
         summarise(
-          #the two exclamation marks (!!) "unquotes" it
-          #the sym() turns the string into a column name
-          #therefore, !!sym(colName) = “Use the string in colName as the name of a new column”
-          #The := operator is a special assignment operator used inside dplyr verbs like mutate(),
-          #summarise(), reframe() when you want to dynamically assign a column name from a variable (like colName),
-          #rather than writing the column name directly.
-          !!sym(colName) := stat_function(pick(where(is.numeric)))
+          !!sym(colName) := stat_function(pick(where(is.numeric)), var)
         ),
       by = "Player"
     )
@@ -596,3 +582,4 @@ server <- function(input, output, session) {
 
 # Run the app
 shinyApp(ui = ui, server = server)
+
