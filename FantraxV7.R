@@ -300,7 +300,7 @@ create_data <- function(filtered_df, input_cols){
   #add in default cols
   default_cols <- c("Min", "Min.Mean", "Min.Form", "FPts.Mean", "FPts.90", input_cols)
   
-  for(i in cols){
+  for(i in default_cols){
     if(!(i %in% colnames(df))){
       var <- ""
       stat <- ""
@@ -422,13 +422,13 @@ Post_Filter <- function(df, min_mins, min_min.mean, min_FPts.mean, max_FPts.mean
 
 #----------------------- CREATE SLIDERS DF -----------------------#
 
-create_sliders_data <- function(){
+create_sliders_data <- function(filtered_df){
   
   df <- template %>% 
-    Add_Statistic(df, "Min", "Sum") %>%
-    Add_Statistic(df, "FPts", "Mean") %>%
-    Add_Statistic(df, "FPts", "90") %>%
-    # Add_Statistic(df, "Min", "Mean") %>%
+    Add_Statistic(filtered_df, "Min", "Sum") %>%
+    Add_Statistic(filtered_df, "FPts", "Mean") %>%
+    Add_Statistic(filtered_df, "FPts", "90") %>%
+    # Add_Statistic(filtered_df, "Min", "Mean") %>%
     #Filter out players with like 1 minute that push the max FPts.90 to like 200
     filter(Min > 10)
   
@@ -450,10 +450,12 @@ gwdf <- load_gameweek_data() %>%
 #if that gw was the latest one. So players would end up in there twice. 
 template <- create_template(gwdf)
 
+#fix gameweeks
 gwdf <- gwdf %>% 
   fix_double_gameweeks()
 
-slider_df <- create_sliders_data()
+#Create data for dashboard sliders
+sliderdf <- create_sliders_data(gwdf)
 
 #---------------------------------------------- UI ----------------------------------------------#
 
@@ -520,11 +522,6 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-  
-  if (any(!rosters$teamName %in% shortTeamNames)) {
-    shiny::stopApp()
-    print("There is an issue with the team names. Stopping execution.")
-  }
   
   output$plot <- renderPlot({
     
