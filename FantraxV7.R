@@ -247,8 +247,8 @@ fix_double_gameweeks <- function(df) {
   return(df)
 }
 
-#Filter the dataframe
-pre_filter <- function(df, input_team, input_status, input_position, start_gameweek, end_gameweek){
+#Filters the gwdf as opposed to post filter which filters the dashboard
+filter_data <- function(df, input_team, input_status, input_position, start_gameweek, end_gameweek){
   
   #filter within the specified gameweek window
   df <- df %>% 
@@ -271,7 +271,7 @@ pre_filter <- function(df, input_team, input_status, input_position, start_gamew
           "Waiver" = str_detect(Status, "^W \\(") | Status == "WW",
           "All Available" = str_detect(Status, "^W \\(") | str_detect(Status, "^FA") | Status == "WW",
           "All Taken" = !Status %in% statuses,
-          TRUE                   # default if status is something else
+          Status == input_status
         )
       )
   }
@@ -292,7 +292,7 @@ pre_filter <- function(df, input_team, input_status, input_position, start_gamew
   return(df)
 }
 
-create_data <- function(filtered_df, input_cols){
+create_dashboard_data <- function(filtered_df, input_cols){
   
   #create base summary df to add cols to
   df <- template
@@ -354,8 +354,10 @@ Add_Statistic <- function(df, filtered_df, var, stat){
                           MeanMnsDD = function(df){
                             mean_val <- mean(df[[var]], na.rm = TRUE)
                             downDev_val <- DownsideDeviation(df[[var]], MAR = mean_val, na.rm = TRUE)
+                            if (is.na(mean_val) || is.na(downDev_val)) return(NA) 
                             round(mean_val - downDev_val, 2)
-                          },
+                          }
+                          ,
                           `90` = function(df){
                             minutes <- sum(df$Min, na.rm = TRUE)
                             round((sum(df[[var]], na.rm = TRUE) / minutes) * 90, 2)
@@ -372,14 +374,16 @@ Add_Statistic <- function(df, filtered_df, var, stat){
                           Form = function(df) {
                             df <- df[order(df$Gameweek, decreasing = TRUE), ]  # Sort by recent gameweek
                             decay_start <- 1
-                            decay_step <- 0.2 #This dictates how aggresively it weights gameweeks
-                            decay_factor <- pmax(decay_start - ((1:nrow(df) - 1) * decay_step), 0)  # Weights: 1, 0.9, 0.8, ...
+                            decay_step <- 0.2
+                            decay_factor <- pmax(decay_start - ((1:nrow(df) - 1) * decay_step), 0)
+                            
                             weighted_sum <- sum(df[[var]] * decay_factor, na.rm = TRUE)
-                            total_weight <- sum(decay_factor[!is.na(df[[var]])])  # Adjust for NAs
+                            total_weight <- sum(decay_factor[!is.na(df[[var]])])
                             formAdj <- round(weighted_sum / total_weight, 2)
                             
                             mean_val <- mean(df[[var]], na.rm = TRUE)
-                            if (mean_val == 0) return(0)  # If no variation, return 0 for all players
+                            
+                            if (is.na(mean_val) || mean_val == 0) return(0)
                             round(formAdj / mean_val, 2)
                           },
                           stop("Invalid statistic"))
@@ -407,7 +411,7 @@ Add_Statistic <- function(df, filtered_df, var, stat){
 }
 
 #function for applying the filters inputted by the user in the dashboard
-Post_Filter <- function(df, min_mins, min_min.mean, min_FPts.mean, max_FPts.mean, min_FPts.90, max_FPts.90){
+filter_dashboard_data <- function(df, min_mins, min_min.mean, min_FPts.mean, max_FPts.mean, min_FPts.90, max_FPts.90){
   
   df <- df %>%
     filter(
@@ -526,11 +530,14 @@ server <- function(input, output, session) {
   output$plot <- renderPlot({
     
     plotData <- gwdf %>% 
-      pre_filter(input$pTeam, input$pStatus, input$pPosition, input$pWindow[1], input$pWindow[2]) %>% 
-      create_data(c(input$pXVar, input$pYVar)) %>% 
+      filter_data(input$pTeam, input$pStatus, input$pPosition, input$pWindow[1], input$pWindow[2]) %>% 
+      create_dashboard_data(c(input$pXVar, input$pYVar)) %>% 
       #Added in 0 for Min.Mean because the Plot doesn't filter by average Mins
-      Post_Filter(input$pMinMins, 0, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2])
+      filter_dashboard_data(input$pMinMins, 0, input$pFPts.Mean[1], input$pFPts.Mean[2], input$pFPts.90[1], input$pFPts.90[2])
       
+    #remove NAs before plotting
+    plotData <- plotData %>%
+      filter(!is.na(.data[[input$pXVar]]), !is.na(.data[[input$pYVar]]))
     
     ggplot(plotData, aes(colour = Position)) + 
       aes(!!sym(input$pXVar), !!sym(input$pYVar)) +
@@ -551,20 +558,20 @@ server <- function(input, output, session) {
     extra_cols <- c("FPts.MeanMnsDD", "FPts.DownDev", "FPts.Form", "FPts.FormAdj", "Pts.90")
     
     tableData <- gwdf %>% 
-      pre_filter(input$tTeam, input$tStatus, input$tPosition, input$tWindow[1], input$tWindow[2]) %>% 
-      create_data(c(extra_cols, input$tPicker)) %>% 
-      Post_Filter(input$tMinMins, input$tMin.Mean, input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2])
+      filter_data(input$tTeam, input$tStatus, input$tPosition, input$tWindow[1], input$tWindow[2]) %>% 
+      create_dashboard_data(c(extra_cols, input$tPicker)) %>% 
+      filter_dashboard_data(input$tMinMins, input$tMin.Mean, input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2])
 
   }, options = list(pageLength = 12), rownames = FALSE)
   
   output$boxPlot <- renderPlot({
 
     boxPlotData <- gwdf %>% 
-      pre_filter("All", "All", "All", input$bWindow[1], input$bWindow[2]) %>% 
-      create_data(c(input$bVar)) %>% 
+      filter_data("All", "All", "All", input$bWindow[1], input$bWindow[2]) %>% 
+      create_dashboard_data(c(input$bVar)) %>% 
       filter(!(Status %in% c("FA")) & !grepl("^W \\(", Status) & Status != "WW")
     
-    p <- ggplot(boxPlotData, aes(x = reorder(get(input$bTeamType), get(input$bVar), FUN=mean, na.rm = T ), y = get(input$bVar), fill = get(input$bTeamType))) +
+    ggplot(boxPlotData, aes(x = reorder(get(input$bTeamType), get(input$bVar), FUN=mean, na.rm = T ), y = get(input$bVar), fill = get(input$bTeamType))) +
       geom_boxplot() +
       stat_summary(
         fun = mean,
@@ -577,9 +584,8 @@ server <- function(input, output, session) {
       labs(title = "Distributions",
            x = input$bTeamType,
            y = input$bVar,
-           fill = input$bTeamType)
-
-    p + theme_classic()
+           fill = input$bTeamType) +
+      theme_classic()
 
   }, res = 90)
 }
