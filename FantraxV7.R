@@ -66,7 +66,7 @@ load_gameweek_data <- function(){
   
 }
 
-update_eligibility <- function(df){
+update_eligibility <- function(base_df){
   
   json_rosters <- GET("https://www.fantrax.com/fxea/general/getTeamRosters?leagueId=vg93n1omlzf9qj69") %>%
     content(as = "parsed", type = "application/json")
@@ -134,7 +134,7 @@ update_eligibility <- function(df){
     )
   
   #Update main df with latest eligibility data
-  df <- df %>%
+  base_df <- base_df %>%
     left_join(
       eligibility,
       by = "ID",
@@ -152,15 +152,15 @@ update_eligibility <- function(df){
   #Generally discouraged coding behaviour but ahwell
   assign("fantrax_teams", fantrax_teams, envir = .GlobalEnv)
   
-  return(df)
+  return(base_df)
   
 }
 
 #----------------------- DATA CLEANING -----------------------#
 
-clean_data <- function(df){
+clean_data <- function(base_df){
   
-  df <- df %>% 
+  base_df <- base_df %>% 
     mutate(
       #remove comma from Min and AP and convert to numeric 
       Min = as.numeric(gsub("\\,", "", Min)),
@@ -168,7 +168,7 @@ clean_data <- function(df){
       AP = as.numeric(gsub("\\,", "", AP)),
       AP = as.numeric(as.character(AP)),
       #Split out Opponent and HomeAway
-      home_or_away = ifelse(startsWith(df$Opponent, "@"), "Away", "Home"),
+      home_or_away = ifelse(startsWith(Opponent, "@"), "Away", "Home"),
       #Clean up opponent column
       Opponent = str_replace(Opponent, Team, ""),
       Opponent = str_replace(Opponent, "F$", ""),
@@ -185,22 +185,22 @@ clean_data <- function(df){
       c(character_variables, single_game_count_variables)
     )
   
-  return(df)
+  return(base_df)
 }
 
-NA_0_min_rows <- function(df){
+NA_0_min_rows <- function(base_df){
   
-  df <- df %>%
+  base_df <- base_df %>%
     mutate(
       across(all_of(single_game_count_variables), ~ if_else(Min == 0, NA_real_, .))
     )
   
-  return(df)
+  return(base_df)
 }
 
-add_new_columns <- function(df){
+add_new_columns <- function(base_df){
   
-  df <- df %>% 
+  base_df <- base_df %>% 
     mutate(
       TkWAndIntAndCLR = TkW + Int + CLR,
       SOTAndKP = SOT + KP,
@@ -209,15 +209,15 @@ add_new_columns <- function(df){
       KPMinusA = KP - A
     )
   
-  return(df)
+  return(base_df)
 }
 
 
 #This grabs the latest gameweek, which should have the most up to date status, opponent, etc.
 #...and uses that as the template to add stats to
-create_template <- function(df){
+create_template <- function(base_df){
   
-  template <- df %>% 
+  template <- base_df %>% 
     filter(
       Gameweek == max(Gameweek)
     ) %>% 
@@ -228,10 +228,10 @@ create_template <- function(df){
   return(template)
 }
 
-fix_double_gameweeks <- function(df) {
+fix_double_gameweeks <- function(base_df) {
   
   # Part 1: rows with GP == 2 (or any GP > 1)
-  double_gw_rows <- df %>%
+  double_gw_rows <- base_df %>%
     filter(GP > 1) %>%
     mutate(row_id = row_number()) %>%
     #split the row into the number in GP.
@@ -240,33 +240,33 @@ fix_double_gameweeks <- function(df) {
     select(-row_id, -game_index)
   
   # Part 2: rows where GP is 1 or NA (leave as-is)
-  single_gw_rows <- df %>%
+  single_gw_rows <- base_df %>%
     filter(is.na(GP) | GP <= 1)
   
   # Combine both parts
-  df <- bind_rows(single_gw_rows, double_gw_rows)
+  base_df <- bind_rows(single_gw_rows, double_gw_rows)
   
-  return(df)
+  return(base_df)
 }
 
-#Filters the gwdf as opposed to post filter which filters the dashboard
-filter_data <- function(df, input_team, input_status, input_position, start_gameweek, end_gameweek){
+#Filters the base_df as opposed to post filter which filters the dashboard_df
+filter_data <- function(base_df, input_team, input_status, input_position, start_gameweek, end_gameweek){
   
   #filter within the specified gameweek window
-  df <- df %>% 
+  base_df <- base_df %>% 
     filter(
       Gameweek >= start_gameweek & Gameweek <= end_gameweek
     )
   
   if (input_team != "All") {
-    df <- df %>%
+    base_df <- base_df %>%
       filter(
         Team == input_team
       )
   }
   
   if(input_status != "All"){
-    df <- df %>%
+    base_df <- base_df %>%
       filter(
         switch(
           input_status,
@@ -279,7 +279,7 @@ filter_data <- function(df, input_team, input_status, input_position, start_game
   }
   
   if (input_position != "All") {
-    df <- df %>%
+    base_df <- base_df %>%
       filter(
         switch(
           input_position,
@@ -291,19 +291,19 @@ filter_data <- function(df, input_team, input_status, input_position, start_game
       )
   }
     
-  return(df)
+  return(base_df)
 }
 
-create_dashboard_data <- function(filtered_df, input_cols){
+create_dashboard_data <- function(base_df, input_cols){
   
   #create base summary df to add cols to
-  df <- template
+  dashboard_df <- template
   
   #add in default cols
   default_cols <- c("Min", "Min.Mean", "Min.Form", "FPts.Mean", "FPts.90", input_cols)
   
   for(i in default_cols){
-    if(!(i %in% colnames(df))){
+    if(!(i %in% colnames(dashboard_df))){
       var <- ""
       stat <- ""
       #get the variable and stat from the input
@@ -318,12 +318,12 @@ create_dashboard_data <- function(filtered_df, input_cols){
         stat <- strsplit(i, ".", fixed = TRUE)[[1]][2]
       }
       
-      df <- Add_Statistic(df, filtered_df, var, stat)
+      dashboard_df <- Add_Statistic(dashboard_df, base_df, var, stat)
       
     }
   }
   
-  return(df)
+  return(dashboard_df)
 }
 
 #Individual Stat functions. So they can call each other
@@ -363,7 +363,7 @@ stat_Form <- function(df, var) {
   round(formAdj / mean_val, 2)
 }
 
-Add_Statistic <- function(df, filtered_df, var, stat) {
+Add_Statistic <- function(dashboard_df, base_df, var, stat) {
   
   stat_functions <- list(
     Sum = stat_Sum,
@@ -385,9 +385,9 @@ Add_Statistic <- function(df, filtered_df, var, stat) {
   
   colName <- ifelse(stat != "Sum", paste0(var, ".", stat), var)
   
-  df <- df %>%
+  dashboard_df <- dashboard_df %>%
     left_join(
-      filtered_df %>%
+      base_df %>%
         group_by(Player) %>%
         summarise(
           !!sym(colName) := stat_function(pick(where(is.numeric)), var)
@@ -395,13 +395,13 @@ Add_Statistic <- function(df, filtered_df, var, stat) {
       by = "Player"
     )
   
-  return(df)
+  return(dashboard_df)
 }
 
 #function for applying the filters inputted by the user in the dashboard
-filter_dashboard_data <- function(df, min_mins, min_min.mean, min_FPts.mean, max_FPts.mean, min_FPts.90, max_FPts.90){
+filter_dashboard_data <- function(dashboard_df, min_mins, min_min.mean, min_FPts.mean, max_FPts.mean, min_FPts.90, max_FPts.90){
   
-  df <- df %>%
+  dashboard_df <- dashboard_df %>%
     filter(
       Min >= min_mins,
       FPts.Mean >= min_FPts.mean & FPts.Mean <= max_FPts.mean,
@@ -409,22 +409,22 @@ filter_dashboard_data <- function(df, min_mins, min_min.mean, min_FPts.mean, max
       Min.Mean >= min_min.mean
     )
   
-  return(df)
+  return(dashboard_df)
 }
 
 #----------------------- CREATE SLIDERS DF -----------------------#
 
-create_sliders_data <- function(filtered_df){
+create_sliders_data <- function(base_df){
   
-  df <- template %>% 
-    Add_Statistic(filtered_df, "Min", "Sum") %>%
-    Add_Statistic(filtered_df, "FPts", "Mean") %>%
-    Add_Statistic(filtered_df, "FPts", "90") %>%
-    # Add_Statistic(filtered_df, "Min", "Mean") %>%
+  sliders_df <- template %>% 
+    Add_Statistic(base_df, "Min", "Sum") %>%
+    Add_Statistic(base_df, "FPts", "Mean") %>%
+    Add_Statistic(base_df, "FPts", "90") %>%
+    # Add_Statistic(base_df, "Min", "Mean") %>%
     #Filter out players with like 1 minute that push the max FPts.90 to like 200
     filter(Min > 10)
   
-  return(df)
+  return(sliders_df)
 }
 
 #for the sliders
