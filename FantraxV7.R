@@ -171,7 +171,9 @@ clean_data <- function(df){
       home_or_away = ifelse(startsWith(df$Opponent, "@"), "Away", "Home"),
       #Clean up opponent column
       Opponent = str_replace(Opponent, Team, ""),
-      Opponent = ifelse(grepl("<br/>", Opponent), Opponent, sub(".*([A-Z]{3}).*", "\\1", Opponent)),
+      Opponent = str_replace(Opponent, "F$", ""),
+      Opponent = str_replace_all(Opponent, "[^A-Z]", ""),
+      Opponent = str_replace(Opponent, "MAM$", ""),
       #Remove quotes from ID column
       ID = gsub("^\\*|\\*$", "", ID),
       #remove the extra team name for the players who have moved teams
