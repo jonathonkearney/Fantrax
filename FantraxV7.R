@@ -42,14 +42,6 @@ varCombos <- c(
           paste, sep = "."))
 )
 
-#Has to be done after loading data somehow
-#maybe this can be done in the functions where it is used
-# fantrax_teams <- gwdf %>%
-#   distinct(Status) %>%
-#   filter(!grepl("^W \\(|^FA", Status)) %>%
-#   arrange(Status) %>% 
-#   pull(Status) 
-
 #----------------------------------------------------------------#
 
 load_gameweek_data <- function(){
@@ -155,6 +147,10 @@ update_eligibility <- function(df){
       )
     ) %>%
     select(-Status.old)
+  
+  #add fantrax_teams to the global environment
+  #Generally discouraged coding behaviour but ahwell
+  assign("fantrax_teams", fantrax_teams, envir = .GlobalEnv)
   
   return(df)
   
@@ -457,6 +453,8 @@ template <- create_template(gwdf)
 gwdf <- gwdf %>% 
   fix_double_gameweeks()
 
+slider_df <- create_sliders_data()
+
 #---------------------------------------------- UI ----------------------------------------------#
 
 
@@ -469,7 +467,7 @@ ui <- fluidPage(
                         sidebarPanel(
                           width = "2",
                           selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(gwdf$Team))), selected = "All"),
-                          selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
+                          selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantrax_teams$shortName), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "Min.Form"),
                           selectInput("pYVar", "Select Y-axis:", choices = sort(varCombos), selected = "FPts.90"),
@@ -489,7 +487,7 @@ ui <- fluidPage(
                         sidebarPanel(
                           width = "2",
                           selectInput("tTeam","Choose a Team", choices = c("All", unique(sort(gwdf$Team))), selected = "All"),
-                          selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantraxTeams), selected = "All Available"),
+                          selectInput("tStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantrax_teams$shortName), selected = "All Available"),
                           selectInput("tPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
                           pickerInput("tPicker", "Columns", choices = sort(varCombos), options = list(`actions-box` = TRUE), selected=NULL, multiple=TRUE),
                           sliderInput("tWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
