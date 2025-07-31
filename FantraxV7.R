@@ -170,10 +170,12 @@ clean_data <- function(base_df){
       #Split out Opponent and HomeAway
       home_or_away = ifelse(startsWith(Opponent, "@"), "Away", "Home"),
       #Clean up opponent column
-      Opponent = str_replace(Opponent, Team, ""),
-      Opponent = str_replace(Opponent, "F$", ""),
-      Opponent = str_replace_all(Opponent, "[^A-Z]", ""),
-      Opponent = str_replace(Opponent, "MAM$", ""),
+      # Opponent = str_replace(Opponent, Team, ""),
+      # Opponent = str_replace(Opponent, "F$", ""),
+      # Opponent = str_replace_all(Opponent, "[^A-Z]", ""),
+      # Opponent = str_replace(Opponent, "MAM$", ""),
+      Opponent = str_remove(Opponent, fixed(Team)),
+      Opponent = str_extract(Opponent, "[A-Z]{3}"),
       #Remove quotes from ID column
       ID = gsub("^\\*|\\*$", "", ID),
       #remove the extra team name for the players who have moved teams
@@ -182,7 +184,7 @@ clean_data <- function(base_df){
     #Keep only the character variables and the variables that are stats for that particular gameweek
     #This removes all accumulative stats like FP.G. I will calculate them myself
     select(
-      c(character_variables, single_game_count_variables)
+      all_of(c(character_variables, single_game_count_variables))
     )
   
   return(base_df)
