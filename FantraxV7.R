@@ -9,6 +9,7 @@ library(httr)
 library(broom)
 library(moments)
 library(jsonlite)
+library(worldfootballR)
 
 rm(list = ls())
 
@@ -68,11 +69,11 @@ load_gameweek_data <- function(){
 
 update_eligibility <- function(base_df){
   
-  json_rosters <- GET("https://www.fantrax.com/fxea/general/getTeamRosters?leagueId=vg93n1omlzf9qj69") %>%
+  json_rosters <- GET("https://www.fantrax.com/fxea/general/getTeamRosters?leagueId=rgevpin7mdvbkz0f") %>%
     content(as = "parsed", type = "application/json")
   json_players <- GET("https://www.fantrax.com/fxea/general/getAdp?sport=EPL") %>%
     content(as = "parsed", type = "application/json")
-  json_eligibility <- GET("https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId=vg93n1omlzf9qj69") %>%
+  json_eligibility <- GET("https://www.fantrax.com/fxea/general/getLeagueInfo?leagueId=rgevpin7mdvbkz0f") %>%
     content(as = "parsed", type = "application/json")
 
   #extract Fantrax teams info
@@ -170,10 +171,6 @@ clean_data <- function(base_df){
       #Split out Opponent and HomeAway
       home_or_away = ifelse(startsWith(Opponent, "@"), "Away", "Home"),
       #Clean up opponent column
-      # Opponent = str_replace(Opponent, Team, ""),
-      # Opponent = str_replace(Opponent, "F$", ""),
-      # Opponent = str_replace_all(Opponent, "[^A-Z]", ""),
-      # Opponent = str_replace(Opponent, "MAM$", ""),
       Opponent = str_remove(Opponent, fixed(Team)),
       Opponent = str_extract(Opponent, "[A-Z]{3}"),
       #Remove quotes from ID column
@@ -213,6 +210,55 @@ add_new_columns <- function(base_df){
   
   return(base_df)
 }
+
+add_expected_stats <- function(base_df){
+  
+  teams <- c(
+    "Arsenal", "Aston_Villa", "Bournemouth", "Brentford", "Brighton", "Burnley", 
+    "Chelsea", "Crystal_Palace", "Everton", "Fulham", "Leeds", "Liverpool",
+    "Manchester_City", "Manchester_United", "Newcastle_United", "Nottingham_Forest",
+    "Sunderland", "Tottenham", "West_Ham", "Wolverhampton_Wanderers"
+  )
+  
+  get_team_stats <- function(team) {
+    url <- paste0("https://understat.com/team/", team, "/2025")
+    
+    tryCatch({
+      df <- understat_team_players_stats(url)
+      if (is.null(df) || !is.data.frame(df)) {
+        message("No valid data for team: ", team)
+        return(NULL)
+      }
+      df %>% mutate(team = team)
+    }, error = function(e) {
+      message("Failed for team: ", team, " | Error: ", e$message)
+      return(NULL)
+    })
+  }
+  
+  expected_stats <- purrr::map_dfr(teams, get_team_stats)
+  
+  if (nrow(expected_stats) == 0) {
+    message("No expected stats could be fetched.")
+    return(base_df)
+  }
+  
+  expected_cols <- c("xG", "xA", "xGChain", "xGBuildup")
+  
+  expected_stats <- expected_stats %>% 
+    select(c(expected_cols, "player_name")) %>%
+    mutate(across(where(is.numeric), ~ round(.x, 2)))
+  
+  varCombos <<- c(varCombos, expected_cols)
+  
+  base_df <- dplyr::left_join(
+    base_df, expected_stats, 
+    by = c("Player" = "player_name")
+  )
+  
+  return(base_df)
+}
+
 
 
 #This grabs the latest gameweek, which should have the most up to date status, opponent, etc.
@@ -438,7 +484,8 @@ gwdf <- load_gameweek_data() %>%
   update_eligibility() %>% 
   clean_data() %>% 
   NA_0_min_rows() %>% 
-  add_new_columns()
+  add_new_columns() %>% 
+  add_expected_stats()
 
 #needs to be done b4 fixing double gameweeks because it may select a double gw as the template
 #if that gw was the latest one. So players would end up in there twice. 
@@ -450,6 +497,33 @@ gwdf <- gwdf %>%
 
 #Create data for dashboard sliders
 sliderdf <- create_sliders_data(gwdf)
+
+#---------------------------------------------- RANDOM ----------------------------------------------#
+
+
+draft <- read.csv("Draft_Results.csv")
+totals <- read.csv("Totals.csv")
+
+draft <- draft %>% 
+  left_join(
+    totals %>% select("ID", "FPts", "RkOv"),
+    join_by("Player.ID" == "ID")
+  )
+
+draft <- draft %>% 
+  mutate(
+    Draft_Score = Ov.Pick - RkOv
+  ) %>% 
+  select(-c("Time..NZST.", "Pos", "Player.ID", "Team", )) %>% 
+  arrange(desc(Draft_Score))
+
+draft_score <- draft %>% 
+  group_by(Fantasy.Team) %>% 
+  summarise(
+    Total_Draft_Score = sum(Draft_Score, na.rm = T)
+  ) %>% 
+  arrange(desc(Total_Draft_Score))
+
 
 #---------------------------------------------- UI ----------------------------------------------#
 
@@ -465,7 +539,7 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(gwdf$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantrax_teams$shortName), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "Min.Form"),
+                          selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "AP.90"),
                           selectInput("pYVar", "Select Y-axis:", choices = sort(varCombos), selected = "FPts.90"),
                           sliderInput("pWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = 0, max = max(sliderdf$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
