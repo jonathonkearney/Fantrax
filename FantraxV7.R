@@ -250,8 +250,6 @@ add_expected_stats <- function(base_df){
     select(c(expected_cols, "player_name")) %>%
     mutate(across(where(is.numeric), ~ round(.x, 2)))
   
-  varCombos <<- c(varCombos, expected_cols)
-  
   expected_stats$player_name <- stri_trans_general(expected_stats$player_name, "Latin-ASCII")
   
   #manually fix incorrect names
@@ -292,8 +290,30 @@ add_expected_stats <- function(base_df){
     by = c("Player" = "player_name")
   )
   
+  #dirty fix for the fact that I am joining summary xA/xG stats to gameweek stats
+  base_df <- base_df %>%
+    group_by(Player) %>%
+    mutate(
+      xA = round(xA / n(),2),
+      xG = round(xG / n(),2),
+      xGChain = round(xGChain / n(),2),
+      xGBuildup = round(xGBuildup / n(),2)
+    ) %>% 
+    #incorrect at a gameweek level, but should be right at a summary level?
+    mutate(
+      xA_diff = round(xA - A,2),
+      xG_diff = round(xG - G,2)
+    ) %>% 
+    mutate(
+      xAxG = round(xA + xG,2),
+      xAxG_diff = round(xA_diff + xG_diff,2)
+    )
+  
   print("The players from gwdf who didnt have an xA/xG match are:")
   print(nrow(base_df %>% filter(is.na(xA), Min > 0) %>% pull(Player)))
+  
+  
+  varCombos <<- c(varCombos, expected_cols, "xA_diff", "xG_diff", "xAxG", "xAxG_diff")
   
   return(base_df)
 }
