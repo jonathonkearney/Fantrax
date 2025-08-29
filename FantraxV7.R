@@ -10,6 +10,7 @@ library(broom)
 library(moments)
 library(jsonlite)
 library(worldfootballR)
+library(stringi)
 
 rm(list = ls())
 
@@ -251,10 +252,48 @@ add_expected_stats <- function(base_df){
   
   varCombos <<- c(varCombos, expected_cols)
   
+  expected_stats$player_name <- stri_trans_general(expected_stats$player_name, "Latin-ASCII")
+  
+  #manually fix incorrect names
+  expected_stats <- expected_stats %>%
+    mutate(player_name = case_when(
+      player_name == "Matt O&#039;Riley" ~ "Matt ORiley",
+      player_name == "Emile Smith-Rowe" ~ "Emile Smith Rowe",
+      player_name == "Ezri Konsa Ngoyo" ~ "	Ezri Konsa",
+      player_name == "Dan Ballard" ~ "Danny Ballard",
+      player_name == "Gabriel" ~ "Gabriel Magalhaes",
+      player_name == "Matthew Cash" ~ "Matty Cash",
+      player_name == "Jan Paul van Hecke" ~ "Jan-Paul van Hecke",
+      player_name == "Rayan Ait Nouri" ~ "Rayan Ait-Nouri",
+      player_name == "Amad Diallo Traore" ~ "Amad Diallo",
+      player_name == "Hee-Chan Hwang" ~ "Hwang Hee-Chan",
+      player_name == "Naif Aguerd" ~ "Nayef Aguerd",
+      player_name == "Jake O&#039;Brien" ~ "Jake OBrien",
+      player_name == "Yehor Yarmolyuk" ~ "Ehor Yarmolyuk",
+      player_name == "Nico O&#039;Reilly" ~ "Nico OReilly",
+      player_name == "Hamed Junior Traore" ~ "Hamed Traore",
+      player_name == "Chimuanya Ugochukwu" ~ "Lesley Ugochukwu",
+      player_name == "Thiago" ~ "Igor Thiago",
+      player_name == "Abduqodir Khusanov" ~ "Abdukodir Khusanov",
+      player_name == "Mathis Cherki" ~ "Rayan Cherki",
+      player_name == "Fernando Lopez" ~ "Fer Lopez",
+      player_name == "Eli Junior Kroupi" ~ "Eli Kroupi",
+      player_name == "Jamie Bynoe-Gittens" ~ "Jamie Gittens",
+      player_name == "Igor Jesus" ~ "Igor Jesus Maciel da Cruz",
+      player_name == "Reinildo" ~ "Reinildo Isnard Mandava",
+      player_name == "Estevao" ~ "Estevao Willian Almeida de Oliveira Goncalves",
+      player_name == "Emile Smith-Rowe" ~ "Emile Smith Rowe",
+      player_name == "Arnaud Kalimuendo Muinga" ~ "Arnaud Kalimuendo",
+      TRUE ~ player_name     # keep other values unchanged
+    ))
+  
   base_df <- dplyr::left_join(
     base_df, expected_stats, 
     by = c("Player" = "player_name")
   )
+  
+  print("The players from gwdf who didnt have an xA/xG match are:")
+  print(nrow(base_df %>% filter(is.na(xA), Min > 0) %>% pull(Player)))
   
   return(base_df)
 }
