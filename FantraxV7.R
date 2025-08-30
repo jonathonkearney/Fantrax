@@ -313,7 +313,7 @@ add_expected_stats <- function(base_df){
   print(nrow(base_df %>% filter(is.na(xA), Min > 0) %>% pull(Player)))
   
   
-  varCombos <<- c(varCombos, expected_cols, "xADiff", "xGDiff", "xGI", "xGIDiff")
+  varCombos <<- c(varCombos, expected_cols, "xADiff", "xGDiff", "xGI", "xGIDiff", "xA.90", "xG.90")
   
   return(base_df)
 }
