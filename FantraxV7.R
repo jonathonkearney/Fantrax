@@ -40,7 +40,7 @@ varCombos <- c(
   single_game_count_variables,
   new_single_game_count_variables,
   c(outer(c(single_game_count_variables, new_single_game_count_variables),
-          c("SD", "Mean", "Med", "MAD", "DownDev", "90", "MeanMnsDD", "LQ", "Skew", "FormAdj", "Form"),
+          c("SD", "Mean", "Med", "MAD", "DD", "90", "MMDD", "LQ", "Skew", "FormAdj", "Form"),
           paste, sep = "."))
 )
 
@@ -301,19 +301,19 @@ add_expected_stats <- function(base_df){
     ) %>% 
     #incorrect at a gameweek level, but should be right at a summary level?
     mutate(
-      xA_diff = round(xA - A,2),
-      xG_diff = round(xG - G,2)
+      xADiff = round(xA - A,2),
+      xGDiff = round(xG - G,2)
     ) %>% 
     mutate(
-      xAxG = round(xA + xG,2),
-      xAxG_diff = round(xA_diff + xG_diff,2)
+      xGI = round(xA + xG,2),
+      xGIDiff = round(xADiff + xGDiff,2)
     )
   
   print("The players from gwdf who didnt have an xA/xG match are:")
   print(nrow(base_df %>% filter(is.na(xA), Min > 0) %>% pull(Player)))
   
   
-  varCombos <<- c(varCombos, expected_cols, "xA_diff", "xG_diff", "xAxG", "xAxG_diff")
+  varCombos <<- c(varCombos, expected_cols, "xADiff", "xGDiff", "xGI", "xGIDiff")
   
   return(base_df)
 }
@@ -440,17 +440,17 @@ stat_Mean <- function(df, var) round(mean(df[[var]], na.rm = TRUE), 2)
 stat_Med <- function(df, var) median(df[[var]], na.rm = TRUE)
 stat_LQ <- function(df, var) quantile(df[[var]], na.rm = TRUE)[[2]]
 stat_MAD <- function(df, var) mad(df[[var]], constant = 1, na.rm = TRUE)
-stat_DownDev <- function(df, var) {
+stat_DD <- function(df, var) {
   round(DownsideDeviation(df[[var]], MAR = mean(df[[var]], na.rm = TRUE), na.rm = TRUE), 2)
 }
 stat_Skew <- function(df, var) {
   round(skewness(df[[var]], na.rm = TRUE), 3)
 }
-stat_MeanMnsDD <- function(df, var) {
+stat_MMDD <- function(df, var) {
   mean_val <- mean(df[[var]], na.rm = TRUE)
-  downDev_val <- DownsideDeviation(df[[var]], MAR = mean_val, na.rm = TRUE)
-  if (is.na(mean_val) || is.na(downDev_val)) return(NA)
-  round(mean_val - downDev_val, 2)
+  DD_val <- DownsideDeviation(df[[var]], MAR = mean_val, na.rm = TRUE)
+  if (is.na(mean_val) || is.na(DD_val)) return(NA)
+  round(mean_val - DD_val, 2)
 }
 stat_90 <- function(df, var) {
   minutes <- sum(df$Min, na.rm = TRUE)
@@ -479,9 +479,9 @@ Add_Statistic <- function(dashboard_df, base_df, var, stat) {
     Med = stat_Med,
     LQ = stat_LQ,
     MAD = stat_MAD,
-    DownDev = stat_DownDev,
+    DD = stat_DD,
     Skew = stat_Skew,
-    MeanMnsDD = stat_MeanMnsDD,
+    MMDD = stat_MMDD,
     `90` = stat_90,
     FormAdj = stat_FormAdj,
     Form = stat_Form
@@ -676,16 +676,39 @@ server <- function(input, output, session) {
     
   }, res = 90)
   
-  output$table = DT::renderDataTable({
-  
-    extra_cols <- c("FPts.MeanMnsDD", "FPts.DownDev", "FPts.Form", "FPts.FormAdj", "Pts.90")
+  output$table <- DT::renderDataTable({
     
-    tableData <- gwdf %>% 
-      filter_data(input$tTeam, input$tStatus, input$tPosition, input$tWindow[1], input$tWindow[2]) %>% 
-      create_dashboard_data(c(extra_cols, input$tPicker)) %>% 
-      filter_dashboard_data(input$tMinMins, input$tMin.Mean, input$tFPts.Mean[1], input$tFPts.Mean[2], input$tFPts.90[1], input$tFPts.90[2])
-
-  }, options = list(pageLength = 12), rownames = FALSE)
+    extra_cols <- c("FPts.MMDD", "FPts.DD", "FPts.Form", "FPts.FormAdj", "Pts.90", "xADiff", "xGIDiff")
+    
+    tableData <- gwdf %>%
+      filter_data(input$tTeam, input$tStatus, input$tPosition, input$tWindow[1], input$tWindow[2]) %>%
+      create_dashboard_data(c(extra_cols, input$tPicker)) %>%
+      filter_dashboard_data(input$tMinMins, input$tMin.Mean, 
+                            input$tFPts.Mean[1], input$tFPts.Mean[2], 
+                            input$tFPts.90[1], input$tFPts.90[2])
+    
+    DT::datatable(
+      tableData,
+      caption = htmltools::tags$caption(
+        style = 'caption-side: bottom; text-align: left;',
+        'Note: Expected stats (xG, xA, etc.) are only accurate when looking at all gameweeks combined'
+      ),
+      options = list(
+        pageLength = 12,
+        dom = 'tip',  # optional: simple table controls
+        columnDefs = list(list(className = 'dt-center', targets = "_all")), # center text
+        initComplete = JS(
+          "function(settings, json) {",
+          "$(this.api().table().container()).css({'font-size': '0.85em'});",  # smaller font
+          "}"
+        )
+      ),
+      rownames = FALSE
+    ) %>%
+      DT::formatRound(columns = which(sapply(tableData, is.numeric)), digits = 2)  # numeric formatting
+  })
+  
+  
   
   output$boxPlot <- renderPlot({
 
