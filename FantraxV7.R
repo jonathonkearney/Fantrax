@@ -12,6 +12,16 @@ library(jsonlite)
 library(worldfootballR)
 library(stringi)
 
+#----------------------- ISSUES -----------------------#
+
+#Some players are appearing on multiple teams. e.g. filter by Joe and Baleba is on my team even tho he's with BCFC.
+#...However, this just may be due to the delay of the API updating
+
+
+#----------------------- SETUP -----------------------#
+
+
+
 rm(list = ls())
 
 setwd("C:/Users/OEM/OneDrive/Documents/R/Fantrax/FantraxV7")
@@ -319,7 +329,6 @@ add_expected_stats <- function(base_df){
 }
 
 
-
 #This grabs the latest gameweek, which should have the most up to date status, opponent, etc.
 #...and uses that as the template to add stats to
 create_template <- function(base_df){
@@ -559,13 +568,24 @@ sliderdf <- create_sliders_data(gwdf)
 
 #---------------------------------------------- RANDOM ----------------------------------------------#
 
+#THIS NEEDS FIXING
 
 draft <- read.csv("Draft_Results.csv")
-totals <- read.csv("Totals.csv")
-
+totals <- gwdf %>%
+  group_by(Player) %>% 
+  summarise(
+    FPts = sum(FPts, na.rm = T),
+    ID = paste0("*", first(ID), "*"),
+  ) %>%
+  ungroup() %>%
+  arrange(desc(FPts)) %>% 
+  mutate(
+    RkOv = row_number()
+  )
+  
 draft <- draft %>% 
   left_join(
-    totals %>% select("ID", "FPts", "RkOv"),
+    totals,
     join_by("Player.ID" == "ID")
   )
 
@@ -598,7 +618,7 @@ ui <- fluidPage(
                           selectInput("pTeam","Choose a Team", choices = c("All", unique(sort(gwdf$Team))), selected = "All"),
                           selectInput("pStatus","Choose a Status", choices = c("All", "All Available", "All Taken", "Waiver", fantrax_teams$shortName), selected = "All Available"),
                           selectInput("pPosition","Choose a Position", choices = c("All", "D", "M", "F"), selected = "All"),
-                          selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "AP.90"),
+                          selectInput("pXVar", "Select X-axis:", choices = sort(varCombos), selected = "xA.90"),
                           selectInput("pYVar", "Select Y-axis:", choices = sort(varCombos), selected = "FPts.90"),
                           sliderInput("pWindow", "Gameweek Window", min = min(gwdf$Gameweek), max = max(gwdf$Gameweek), value = c(min(gwdf$Gameweek), max(gwdf$Gameweek))),
                           sliderInput("pMinMins", "Minimum Total Minutes", min = 0, max = max(sliderdf$Min, na.rm = TRUE), value = min(10, na.rm = TRUE)),
@@ -678,7 +698,7 @@ server <- function(input, output, session) {
   
   output$table <- DT::renderDataTable({
     
-    extra_cols <- c("FPts.MMDD", "FPts.DD", "FPts.Form", "FPts.FormAdj", "Pts.90", "xADiff", "xGIDiff")
+    extra_cols <- c("FPts.MMDD", "FPts.DD", "FPts.Form", "FPts.FormAdj", "Pts.90", "xA.90", "xADiff", "xGDiff")
     
     tableData <- gwdf %>%
       filter_data(input$tTeam, input$tStatus, input$tPosition, input$tWindow[1], input$tWindow[2]) %>%
